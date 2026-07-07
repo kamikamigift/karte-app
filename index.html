@@ -10,7 +10,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="カルテ">
-<meta name="theme-color" content="#F5F5F7">
+<meta name="theme-color" content="#0071E3">
 <title>クライアントカルテ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -32,19 +32,19 @@
 html{scroll-behavior:smooth}
 body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text1);min-height:100vh;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
 
-/* ── Header : frosted minimal ── */
-.header{background:rgba(255,255,255,.82);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);padding:0 max(28px,calc((100vw - 1000px)/2));height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+/* ── Header : brand color band ── */
+.header{background:linear-gradient(135deg,#0071E3,#3395F0);padding:0 max(28px,calc((100vw - 1000px)/2));height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 10px rgba(0,90,180,.28)}
 .logo-wrap{display:flex;align-items:center;gap:12px}
 .logo-icon{display:none}
-.logo{font-size:21px;font-weight:700;color:var(--text1);letter-spacing:-.022em;line-height:1.1;white-space:nowrap}
-.logo-sub{font-size:11px;color:var(--text3);letter-spacing:.08em;margin-top:2px;font-weight:500;white-space:nowrap}
+.logo{font-size:21px;font-weight:700;color:#fff;letter-spacing:-.022em;line-height:1.1;white-space:nowrap}
+.logo-sub{font-size:11px;color:rgba(255,255,255,.72);letter-spacing:.08em;margin-top:2px;font-weight:500;white-space:nowrap}
 .header-right{display:flex;align-items:center;gap:14px}
 
 /* ── Buttons ── */
-.filter-btn{height:36px;padding:0 4px;border:none;border-radius:0;background:transparent;color:var(--text2);font-size:14px;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:6px;transition:color .15s;white-space:nowrap;font-weight:500}
-.filter-btn:hover{color:var(--text1)}
-.btn-primary{height:38px;padding:0 20px;border:none;border-radius:980px;background:var(--accent);color:#fff;font-size:14px;font-family:inherit;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .18s;white-space:nowrap}
-.btn-primary:hover{background:var(--accent2)}
+.filter-btn{height:36px;padding:0 4px;border:none;border-radius:0;background:transparent;color:rgba(255,255,255,.92);font-size:14px;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:6px;transition:color .15s;white-space:nowrap;font-weight:500}
+.filter-btn:hover{color:#fff}
+.btn-primary{height:38px;padding:0 20px;border:none;border-radius:980px;background:#fff;color:var(--accent);font-size:14px;font-family:inherit;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .18s;white-space:nowrap}
+.btn-primary:hover{background:#EAF4FF}
 
 /* ── Toolbar ── */
 .toolbar{padding:44px max(28px,calc((100vw - 1000px)/2)) 8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -268,7 +268,9 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
   .logo{font-size:17px}
   .logo-sub{font-size:10px}
   .filter-btn .btn-label{display:none}
-  .filter-btn{padding:0 6px;height:36px}
+  /* アイコンだけになるメール・設定ボタンは大きく・タップしやすく */
+  .filter-btn{padding:0;width:42px;height:42px;justify-content:center}
+  .filter-btn svg{width:22px;height:22px}
   .btn-primary{padding:0 14px}
   .toolbar{padding:24px 18px 8px}
   .stats-bar,.tag-filters{padding-left:18px;padding-right:18px}
@@ -277,6 +279,13 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
   .form-row{grid-template-columns:1fr}
   .modal-box{padding:28px 22px 36px}
   .attach-grid{grid-template-columns:repeat(auto-fill,minmax(75px,1fr))}
+}
+/* さらに狭い端末: 新規登録を丸い「+」ボタンにして帯に収める */
+@media(max-width:380px){
+  .btn-primary{width:42px;height:42px;padding:0;justify-content:center;border-radius:50%}
+  .btn-primary .btn-label{display:none}
+  .btn-primary svg{width:20px;height:20px}
+  .header-right{gap:4px}
 }
 </style>
 </head>
@@ -298,7 +307,7 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
       <span class="btn-label">メール</span>
     </button>
     <button class="filter-btn" onclick="openSettings()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       <span class="btn-label">設定</span>
     </button>
     <button class="btn-primary" onclick="openAddModal()">
