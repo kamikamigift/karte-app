@@ -195,6 +195,17 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 /* hint */
 .detail-hint{font-size:12px;color:var(--text3);padding:0 4px 4px;letter-spacing:.01em;grid-column:1/-1}
 
+/* リソリューション記録の一覧表 */
+.rezo-scroll{max-height:280px;overflow-y:auto;padding:0 14px}
+.rezo-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.rezo-table th{text-align:left;font-weight:600;color:var(--text3);font-size:11px;padding:6px 8px;border-bottom:1px solid var(--surface3);white-space:nowrap;position:sticky;top:0;background:var(--surface)}
+.rezo-table td{padding:8px;border-bottom:1px solid var(--surface2);vertical-align:top;line-height:1.55;color:var(--text1)}
+.rezo-table tr:last-child td{border-bottom:none}
+.rezo-date{white-space:nowrap;color:var(--text2);font-weight:500}
+.rezo-staff{white-space:nowrap;color:var(--text3)}
+.rezo-stats{display:flex;gap:6px 16px;flex-wrap:wrap;padding:12px 22px 16px;font-size:12px;color:var(--text3);border-top:1px solid var(--surface3);margin-top:6px}
+.rezo-stats strong{color:var(--text1);font-weight:600}
+
 /* attach (form) */
 .attach-drop{border:1.5px dashed var(--border2);border-radius:16px;padding:28px;text-align:center;cursor:pointer;transition:all .18s;margin-bottom:14px;background:transparent}
 .attach-drop:hover,.attach-drop.drag-over{border-color:var(--accent);background:var(--accent-bg)}
@@ -680,6 +691,8 @@ function openDetail(id){
   // 左下の独立した添付ファイルセクションは廃止（添付はご対応履歴内で管理）
   const attHTML='';
 
+  const rezoHTML=rezoSectionHTML(c);
+
   document.getElementById('detailPanel').innerHTML=`
     <div class="detail-scroll">
       <div class="detail-hero">
@@ -734,6 +747,8 @@ function openDetail(id){
             </div>
           </div>
 
+          ${rezoHTML}
+
           ${attHTML}
         </div>
 
@@ -768,6 +783,38 @@ function openDetail(id){
     </div>`;
 
   document.getElementById('detailOverlay').classList.add('open');
+}
+
+/* リソリューション記録の一覧表（対応履歴のうち「✨ リソリューション」を抽出して表にする） */
+function rezoSectionHTML(c){
+  const rezos=(c.history||[]).filter(h=>h.type==='✨ リソリューション').sort((a,b)=>new Date(b.date)-new Date(a.date));
+  return`
+    <div class="detail-section" id="rezo-${c.id}">
+      <div class="detail-section-hd"><span class="detail-section-title">✨ リソリューション記録</span></div>
+      ${rezos.length?`
+      <div class="rezo-scroll" style="margin-top:8px">
+        <table class="rezo-table">
+          <thead><tr><th>日付</th><th>内容</th><th>担当</th></tr></thead>
+          <tbody>${rezos.map(h=>`<tr>
+            <td class="rezo-date">${formatDate(h.date)}</td>
+            <td>${esc(h.text)}</td>
+            <td class="rezo-staff">${esc(h.staff||'')}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+      <div class="rezo-stats">
+        <span>回数 <strong>${rezos.length}回</strong></span>
+        <span>初回 <strong>${formatDate(rezos[rezos.length-1].date)}</strong></span>
+        <span>最終 <strong>${formatDate(rezos[0].date)}</strong></span>
+        <span>経過 <strong>${Math.floor((Date.now()-new Date(rezos[0].date))/86400000)}日</strong></span>
+      </div>`
+      :`<div style="padding:6px 22px 18px;font-size:13px;color:var(--text3)">記録はまだありません。対応履歴で「✨ リソリューション」を選んで記録すると、ここに一覧されます。</div>`}
+    </div>`;
+}
+function refreshRezoSection(customerId){
+  const el=document.getElementById(`rezo-${customerId}`);
+  const c=customers.find(x=>x.id===customerId);
+  if(el&&c)el.outerHTML=rezoSectionHTML(c);
 }
 
 function dfieldHTML(fieldKey,label,displayHTML,rawVal,type,customerId,cfId){
@@ -1256,6 +1303,7 @@ function saveHistoryEdit(customerId,histId){
   if(!saveData())return;
   delete histEditAtts[histId];
   document.getElementById(`hlist-${customerId}`).innerHTML=renderHistoryList(customers[idx]);
+  refreshRezoSection(customerId);
   renderList();
   showToast('カルテを更新しました');
 }
@@ -1288,6 +1336,7 @@ function addHistory(customerId){
   const badge=document.getElementById(`hfilecount-${customerId}`);
   if(badge)badge.textContent='';
   document.getElementById(`hlist-${customerId}`).innerHTML=renderHistoryList(customers[idx]);
+  refreshRezoSection(customerId);
   renderList();
   showToast('カルテに記録しました');
 }
@@ -1299,6 +1348,7 @@ function deleteHistory(customerId,histId){
   customers[idx].history=(customers[idx].history||[]).filter(h=>h.id!==histId);
   saveData();
   document.getElementById(`hlist-${customerId}`).innerHTML=renderHistoryList(customers[idx]);
+  refreshRezoSection(customerId);
   showToast('削除しました');
 }
 
