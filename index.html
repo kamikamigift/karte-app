@@ -443,14 +443,16 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
       <p style="font-size:11px;color:var(--text3)">追加した項目は顧客登録・編集フォームと詳細画面に表示されます。</p>
     </div>
     <div id="pane-data" style="display:none">
+      <div id="syncPane"></div>
+      <hr class="divider">
       <p style="font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600">📦 バックアップ（全データ）</p>
       <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">顧客・タグ・項目・履歴・添付ファイルをすべて1つのファイルに保存します。パソコンの買い替えや別のスマホへの引っ越しにも使えます。</p>
       <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
-        <button class="btn-add" onclick="exportBackup()" style="flex:1;min-width:140px">
+        <button class="btn-add" onclick="exportBackup()" style="flex:1;min-width:180px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           バックアップを保存
         </button>
-        <button class="btn-add" onclick="document.getElementById('importInput').click()" style="flex:1;min-width:140px;background:var(--surface);color:var(--accent);border:1.5px solid var(--accent)">
+        <button class="btn-add" onclick="document.getElementById('importInput').click()" style="flex:1;min-width:180px;background:var(--surface);color:var(--accent);border:1.5px solid var(--accent)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           バックアップから復元
         </button>
@@ -572,6 +574,7 @@ if(_storedCustomers===null){
 function saveData(){
   try{
     localStorage.setItem('crm_customers',JSON.stringify(customers));
+    scheduleSync();
     return true;
   }catch(e){
     // 容量超過などで保存に失敗したら、メモリ上の変更を保存済みの状態に巻き戻す
@@ -580,8 +583,8 @@ function saveData(){
     return false;
   }
 }
-function saveTags(){localStorage.setItem('crm_tags',JSON.stringify(tags))}
-function saveFields(){localStorage.setItem('crm_fields',JSON.stringify(customFields))}
+function saveTags(){localStorage.setItem('crm_tags',JSON.stringify(tags));scheduleSync()}
+function saveFields(){localStorage.setItem('crm_fields',JSON.stringify(customFields));scheduleSync()}
 
 /* search/filter */
 function onSearch(){searchQuery=document.getElementById('searchInput').value;renderList()}
@@ -1014,7 +1017,7 @@ function switchTab(tab){
     document.getElementById('tab-'+t).classList.toggle('active',t===tab);
     document.getElementById('pane-'+t).style.display=t===tab?'':'none';
   });
-  if(tab==='data')renderDeleteCustomerSelect();
+  if(tab==='data'){renderDeleteCustomerSelect();renderSyncPane()}
 }
 function renderDeleteCustomerSelect(){
   const sel=document.getElementById('delCustomerSelect');
@@ -1347,6 +1350,251 @@ function exportCSV(){
   URL.revokeObjectURL(url);
   showToast('CSVを書き出しました');
 }
+
+/* ── クラウド同期（GitHub非公開リポジトリ / 端末側で暗号化） ──
+   仕組み: 保存のたびに全データを合言葉で暗号化し、非公開リポジトリに自動アップロード。
+   起動時・画面復帰時にリモートの更新を確認して自動で取り込む。
+   合言葉が違えば復号できないため、GitHub上のファイルは第三者には読めない。 */
+const SYNC_REPO='kamikamigift/karte-data',SYNC_PATH='backup.enc.json';
+let syncCfg=JSON.parse(localStorage.getItem('crm_sync')||'null');
+let syncTimer=null,syncBusy=false,applyingRemote=false,lastRemoteCheck=0,syncGen=0;
+
+function saveSyncCfg(){localStorage.setItem('crm_sync',JSON.stringify(syncCfg))}
+
+/* base64 <-> バイト列 */
+function b64enc(buf){let s='';const b=new Uint8Array(buf);for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)}
+function b64dec(str){const s=atob(str);const b=new Uint8Array(s.length);for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i);return b}
+
+/* 合言葉から暗号鍵を作る(PBKDF2 20万回 → AES-GCM 256bit) */
+async function deriveKey(pass,salt){
+  const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:200000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function encryptPayload(obj,pass){
+  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await deriveKey(pass,salt);
+  const data=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(obj)));
+  return JSON.stringify({v:1,salt:b64enc(salt),iv:b64enc(iv),data:b64enc(data)});
+}
+async function decryptPayload(text,pass){
+  const p=JSON.parse(text);
+  const key=await deriveKey(pass,b64dec(p.salt));
+  const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64dec(p.iv)},key,b64dec(p.data));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+/* GitHub API */
+function ghHeaders(){return{'Authorization':'token '+syncCfg.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}}
+async function ghGetFileMeta(){
+  const res=await fetch(`https://api.github.com/repos/${SYNC_REPO}/contents/?t=${Date.now()}`,{headers:ghHeaders(),cache:'no-store'});
+  if(res.status===404)return null;
+  if(!res.ok)throw new Error('repo:'+res.status);
+  const list=await res.json();
+  return Array.isArray(list)?(list.find(f=>f.name===SYNC_PATH)||null):null;
+}
+async function ghGetFileRaw(){
+  const res=await fetch(`https://api.github.com/repos/${SYNC_REPO}/contents/${SYNC_PATH}?t=${Date.now()}`,{headers:{...ghHeaders(),Accept:'application/vnd.github.raw+json'},cache:'no-store'});
+  if(res.status===404)return null;
+  if(!res.ok)throw new Error('get:'+res.status);
+  return res.text();
+}
+async function ghPutFile(content,sha){
+  const body={message:'sync '+new Date().toISOString(),content:btoa(content)};
+  if(sha)body.sha=sha;
+  const res=await fetch(`https://api.github.com/repos/${SYNC_REPO}/contents/${SYNC_PATH}`,{method:'PUT',headers:ghHeaders(),body:JSON.stringify(body)});
+  if(res.status===409||res.status===422)throw Object.assign(new Error('conflict:'+res.status),{conflict:true});
+  if(!res.ok)throw new Error('put:'+res.status);
+  return(await res.json()).content.sha;
+}
+
+/* 保存後に呼ばれる。1.5秒待ってからまとめてアップロード */
+function scheduleSync(){
+  if(!syncCfg||applyingRemote)return;
+  syncGen++;syncCfg.pending=true;saveSyncCfg();
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(syncUploadSafe,1500);
+  renderSyncStatus();
+}
+
+async function syncUploadSafe(){
+  if(!syncCfg||syncBusy)return;
+  syncBusy=true;renderSyncStatus('☁️ 同期中…');
+  const gen=syncGen;
+  try{await syncUpload(gen);renderSyncStatus()}
+  catch(e){console.warn('sync upload failed',e);renderSyncStatus('⚠️ 同期できませんでした。通信環境を確認してください（データはこの端末には保存されています）')}
+  syncBusy=false;
+  if(syncGen!==gen)setTimeout(syncUploadSafe,300); // アップロード中に新しい変更があれば追い同期
+}
+
+async function syncUpload(gen){
+  const payload={v:1,exportedAt:new Date().toISOString(),device:syncCfg.deviceName,customers,tags,customFields};
+  const text=await encryptPayload(payload,syncCfg.pass);
+  const finish=sha=>{
+    syncCfg.lastSha=sha;syncCfg.lastExportedAt=payload.exportedAt;syncCfg.lastSyncAt=new Date().toISOString();
+    if(syncGen===gen)syncCfg.pending=false;
+    saveSyncCfg();
+  };
+  try{finish(await ghPutFile(text,syncCfg.lastSha||undefined))}
+  catch(e){
+    if(!e.conflict)throw e;
+    // リモートが先に更新されていた（他端末が保存済み）
+    const meta=await ghGetFileMeta();
+    const remote=meta?await decryptPayload(await ghGetFileRaw(),syncCfg.pass):null;
+    if(remote&&new Date(remote.exportedAt||0)>new Date(syncCfg.lastExportedAt||0)){
+      if(confirm(`他の端末で保存された新しいデータが見つかりました（${formatDateTime(remote.exportedAt)} 保存）。\n\nOK：新しい方を取り込む（この端末の直近の変更は消えます）\nキャンセル：この端末の内容で上書きする`)){
+        applyRemote(remote,meta.sha);return;
+      }
+    }
+    finish(await ghPutFile(text,meta?meta.sha:undefined));
+  }
+}
+
+/* リモートの更新チェック(起動時・画面復帰時・手動)。30秒以内の連続チェックは省略 */
+async function syncCheckRemote(force,manual){
+  if(!syncCfg)return;
+  if(!force&&Date.now()-lastRemoteCheck<30000)return;
+  lastRemoteCheck=Date.now();
+  const meta=await ghGetFileMeta();
+  if(!meta){if(manual)showToast('☁️ クラウドにはまだデータがありません');return}
+  if(meta.sha===syncCfg.lastSha){
+    syncCfg.lastSyncAt=new Date().toISOString();saveSyncCfg();renderSyncStatus();
+    if(manual)showToast('☁️ 最新の状態です');
+    return;
+  }
+  const remote=await decryptPayload(await ghGetFileRaw(),syncCfg.pass);
+  if(syncCfg.pending){
+    if(!confirm(`他の端末で保存された新しいデータがあります（${formatDateTime(remote.exportedAt)} 保存）。\n\nOK：取り込む（この端末のまだ同期されていない変更は消えます）\nキャンセル：この端末の内容を優先して上書きする`)){
+      await syncUploadSafe();return;
+    }
+  }
+  applyRemote(remote,meta.sha);
+}
+
+/* リモートのデータをこの端末に反映する */
+function applyRemote(remote,sha){
+  applyingRemote=true;
+  customers=remote.customers||[];
+  tags=remote.tags||tags;
+  customFields=remote.customFields||customFields;
+  saveData();saveTags();saveFields();
+  applyingRemote=false;
+  syncCfg.lastSha=sha;syncCfg.lastExportedAt=remote.exportedAt;syncCfg.pending=false;syncCfg.lastSyncAt=new Date().toISOString();
+  saveSyncCfg();
+  closeModal('detailOverlay');
+  renderTagFilters();renderList();renderSyncStatus();
+  showToast('☁️ 最新のデータを取り込みました');
+}
+
+function detectDeviceName(){
+  const ua=navigator.userAgent;
+  if(/iPhone/.test(ua))return'iPhone';
+  if(/iPad/.test(ua))return'iPad';
+  if(/Android/.test(ua))return'Android';
+  if(/Mac/.test(ua))return'Mac';
+  return'PC';
+}
+
+async function setupSync(){
+  const token=document.getElementById('syncToken').value.trim();
+  const pass=document.getElementById('syncPass').value;
+  if(!token||!pass){showToast('トークンと合言葉の両方を入力してください');return}
+  if(pass.length<8){showToast('合言葉は8文字以上にしてください');return}
+  const btn=document.getElementById('syncSetupBtn');
+  if(btn){btn.disabled=true;btn.textContent='確認中…'}
+  try{
+    syncCfg={token,pass,deviceName:detectDeviceName(),lastSha:null,lastExportedAt:null,pending:false,lastSyncAt:null};
+    const meta=await ghGetFileMeta(); // トークン不正ならここで失敗する
+    if(meta){
+      let remote;
+      try{remote=await decryptPayload(await ghGetFileRaw(),pass)}
+      catch(e){
+        syncCfg=null;
+        alert('クラウドに保存済みのデータがありますが、合言葉が一致しません。\n最初に設定したときと同じ合言葉を入力してください。');
+        resetSyncSetupBtn();return;
+      }
+      if(confirm(`クラウドに保存済みのデータが見つかりました。\n・顧客 ${(remote.customers||[]).length}件\n・保存日時 ${formatDateTime(remote.exportedAt)}\n\nOK：クラウドのデータをこの端末に取り込む（おすすめ）\nキャンセル：この端末のデータでクラウドを上書きする`)){
+        saveSyncCfg();applyRemote(remote,meta.sha);
+      }else{
+        if(!confirm('本当にこの端末の内容でクラウドを上書きしますか？\nクラウド側の以前のデータはこの端末の内容に置き換わります。')){
+          syncCfg=null;resetSyncSetupBtn();return;
+        }
+        syncCfg.lastSha=meta.sha;saveSyncCfg();
+        await syncUploadSafe();
+      }
+    }else{
+      saveSyncCfg();
+      await syncUploadSafe();
+    }
+    showToast('☁️ 同期を設定しました');
+  }catch(e){
+    console.warn('sync setup failed',e);
+    syncCfg=null;
+    alert('同期の設定に失敗しました。\nトークンが正しいか、インターネットに接続しているかを確認してください。');
+  }
+  resetSyncSetupBtn();
+  renderSyncPane();
+}
+function resetSyncSetupBtn(){const b=document.getElementById('syncSetupBtn');if(b){b.disabled=false;b.textContent='同期を開始する'}}
+
+async function syncNow(){
+  if(!syncCfg)return;
+  try{
+    if(syncCfg.pending)await syncUploadSafe();
+    await syncCheckRemote(true,true);
+  }catch(e){console.warn(e);renderSyncStatus('⚠️ 同期できませんでした。通信環境を確認してください')}
+}
+
+function disableSync(){
+  if(!confirm('この端末の同期設定を解除しますか？\n（クラウド上のデータと他の端末には影響しません。データもこの端末に残ります）'))return;
+  syncCfg=null;localStorage.removeItem('crm_sync');
+  renderSyncPane();showToast('同期設定を解除しました');
+}
+
+/* 設定画面の同期セクション描画 */
+function renderSyncPane(){
+  const w=document.getElementById('syncPane');
+  if(!w)return;
+  if(!syncCfg){
+    w.innerHTML=`
+      <p style="font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600">☁️ 2台同期（PCとスマホで同じデータを見る）</p>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.7">暗号化したデータを非公開の保管庫（GitHub）に自動で預け、もう一方の端末が自動で受け取ります。<strong>両方の端末で同じトークンと合言葉</strong>を設定してください。</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px">
+        <input class="add-input" id="syncToken" type="password" placeholder="アクセストークン（ghp_… などで始まる文字列）" autocomplete="off">
+        <input class="add-input" id="syncPass" type="password" placeholder="合言葉（8文字以上・忘れないもの）" autocomplete="off">
+        <button class="btn-add" id="syncSetupBtn" onclick="setupSync()">同期を開始する</button>
+      </div>
+      <p style="font-size:11px;color:var(--text3);line-height:1.7">💡 合言葉はデータを読み解く鍵です。合言葉が違うと他の端末でデータを開けません。トークンと合言葉は引き継ぎメモとして安全な場所に控えてください。</p>`;
+  }else{
+    w.innerHTML=`
+      <p style="font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600">☁️ 2台同期</p>
+      <p id="syncStatusLine" style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.7"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-add" onclick="syncNow()" style="flex:1;min-width:120px">今すぐ同期</button>
+        <button class="btn-add" onclick="disableSync()" style="min-width:120px;background:var(--surface);color:var(--text2);border:1.5px solid var(--border)">この端末の同期を解除</button>
+      </div>`;
+    renderSyncStatus();
+  }
+}
+function renderSyncStatus(msg){
+  const el=document.getElementById('syncStatusLine');
+  if(!el||!syncCfg)return;
+  el.innerHTML=msg?esc(msg):
+    `同期：<strong style="color:#15803d">オン</strong>（この端末：${esc(syncCfg.deviceName||'')}）`+
+    `${syncCfg.lastSyncAt?`　最終同期 ${formatDateTime(syncCfg.lastSyncAt)}`:''}`+
+    `${syncCfg.pending?'　<span style="color:#c2410c">未同期の変更あり</span>':''}`;
+}
+
+/* 起動時: 未送信の変更があれば送り、その後リモートの更新を確認 */
+(async function initSync(){
+  if(!syncCfg)return;
+  try{
+    if(syncCfg.pending)await syncUploadSafe();
+    await syncCheckRemote(true);
+  }catch(e){console.warn('initial sync failed',e)}
+})();
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible')syncCheckRemote().catch(()=>{});
+});
 
 /* ── Bulk Mail ── */
 function openMailModal(){
