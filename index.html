@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 検索エンジンに載せない(業務ツールのため) -->
+<meta name="robots" content="noindex, nofollow">
+<!-- ホーム画面に追加したときアプリとして全画面表示するための設定 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="カルテ">
+<meta name="theme-color" content="#F5F5F7">
+<title>クライアントカルテ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F5F5F7;
+  --surface:#FFFFFF;
+  --surface2:#F5F5F7;
+  --surface3:#E8E8ED;
+  --border:#E8E8ED;--border2:#D2D2D7;
+  --text1:#1D1D1F;--text2:#515154;--text3:#86868B;
+  --accent:#0071E3;--accent2:#0077ED;--accent-bg:#F0F7FF;
+  --radius:18px;--radius-sm:12px;
+  --shadow-sm:0 1px 4px rgba(0,0,0,.04);
+  --shadow:0 2px 12px rgba(0,0,0,.06);
+  --shadow-md:0 8px 32px rgba(0,0,0,.10);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text1);min-height:100vh;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+/* ── Header : frosted minimal ── */
+.header{background:rgba(255,255,255,.82);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);padding:0 max(28px,calc((100vw - 1000px)/2));height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo-wrap{display:flex;align-items:center;gap:12px}
+.logo-icon{display:none}
+.logo{font-size:21px;font-weight:700;color:var(--text1);letter-spacing:-.022em;line-height:1.1;white-space:nowrap}
+.logo-sub{font-size:11px;color:var(--text3);letter-spacing:.08em;margin-top:2px;font-weight:500;white-space:nowrap}
+.header-right{display:flex;align-items:center;gap:14px}
+
+/* ── Buttons ── */
+.filter-btn{height:36px;padding:0 4px;border:none;border-radius:0;background:transparent;color:var(--text2);font-size:14px;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:6px;transition:color .15s;white-space:nowrap;font-weight:500}
+.filter-btn:hover{color:var(--text1)}
+.btn-primary{height:38px;padding:0 20px;border:none;border-radius:980px;background:var(--accent);color:#fff;font-size:14px;font-family:inherit;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .18s;white-space:nowrap}
+.btn-primary:hover{background:var(--accent2)}
+
+/* ── Toolbar ── */
+.toolbar{padding:44px max(28px,calc((100vw - 1000px)/2)) 8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.search-wrap{flex:1;min-width:220px;position:relative}
+.search-wrap svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
+.search-input{width:100%;height:48px;border:none;border-radius:14px;padding:0 16px 0 46px;font-size:16px;font-family:inherit;background:var(--surface);color:var(--text1);outline:none;transition:box-shadow .2s;box-shadow:var(--shadow-sm)}
+.search-input:focus{box-shadow:0 0 0 4px rgba(0,113,227,.18)}
+.search-input::placeholder{color:var(--text3)}
+.sort-btn{height:48px;padding:0 18px;border:none;border-radius:14px;background:var(--surface);color:var(--text2);font-size:14px;font-family:inherit;cursor:pointer;transition:box-shadow .15s;box-shadow:var(--shadow-sm);font-weight:500}
+.sort-btn:hover{box-shadow:var(--shadow)}
+
+/* ── Stats / Tags ── */
+.stats-bar{padding:0 max(28px,calc((100vw - 1000px)/2)) 8px}
+.stat{font-size:13px;color:var(--text3)}
+.tag-filters{padding:10px max(28px,calc((100vw - 1000px)/2)) 22px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tag-filter{height:32px;padding:0 15px;border-radius:980px;border:none;background:transparent;font-size:13px;font-weight:500;font-family:inherit;color:var(--text2);cursor:pointer;transition:all .15s}
+.tag-filter:hover{background:var(--surface3)}
+.tag-filter.active{background:var(--text1);color:#fff}
+
+/* ── Customer Cards ── */
+.customer-list{padding:0 max(28px,calc((100vw - 1000px)/2)) 90px;display:flex;flex-direction:column;gap:10px}
+.customer-card{background:var(--surface);border:none;border-radius:var(--radius);padding:13px 22px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:all .22s cubic-bezier(.2,.7,.3,1);box-shadow:var(--shadow-sm)}
+.customer-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;flex-shrink:0;letter-spacing:.01em}
+.customer-info{flex:1;min-width:0}
+.customer-name{font-size:17px;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.014em;color:var(--text1)}
+.customer-name mark{background:rgba(0,113,227,.14);color:var(--text1);border-radius:3px;padding:0 2px}
+.customer-sub{font-size:13px;color:var(--text3);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.meta-date{font-size:12px;color:var(--text3);flex-shrink:0}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:980px;font-size:11px;font-weight:600;letter-spacing:.01em}
+.empty{text-align:center;padding:90px 20px;color:var(--text3)}
+.empty p{font-size:15px;margin-top:14px}
+
+/* ── Modals ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:200;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.modal-overlay.open{display:flex}
+@media(min-width:600px){.modal-overlay{align-items:center}}
+.modal-box{background:var(--surface);border-radius:24px 24px 0 0;width:100%;max-width:600px;max-height:92vh;overflow-y:auto;padding:36px 36px 44px;animation:rise .3s cubic-bezier(.2,.7,.3,1)}
+@media(min-width:600px){.modal-box{border-radius:24px}}
+@keyframes rise{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.modal-title{font-size:24px;font-weight:700;letter-spacing:-.022em}
+.modal-close{width:34px;height:34px;border:none;background:var(--surface2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:17px;transition:background .15s;flex-shrink:0}
+.modal-close:hover{background:var(--surface3)}
+
+/* ── Forms ── */
+.form-field{margin-bottom:22px}
+.form-label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px;letter-spacing:.01em}
+.form-input,.form-select,.form-textarea{width:100%;border:none;border-radius:12px;padding:14px 16px;font-size:16px;font-family:inherit;color:var(--text1);background:var(--surface2);outline:none;transition:all .18s;line-height:1.5}
+.form-input:focus,.form-select:focus,.form-textarea:focus{background:var(--surface);box-shadow:0 0 0 4px rgba(0,113,227,.18)}
+.form-input::placeholder,.form-textarea::placeholder{color:var(--text3)}
+.form-textarea{resize:vertical;min-height:100px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-actions{display:flex;gap:12px;margin-top:32px}
+.btn-cancel{flex:1;height:48px;border:none;border-radius:980px;background:var(--surface2);font-size:15px;font-family:inherit;color:var(--text2);cursor:pointer;transition:background .15s;font-weight:500}
+.btn-cancel:hover{background:var(--surface3)}
+.btn-save{flex:2;height:48px;border:none;border-radius:980px;background:var(--accent);font-size:15px;font-family:inherit;color:#fff;font-weight:500;cursor:pointer;transition:background .18s}
+.btn-save:hover{background:var(--accent2)}
+
+/* ── Detail Panel : wide, airy ── */
+.detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.detail-overlay.open{display:flex}
+.detail-panel{background:var(--bg);border-radius:24px;width:96vw;max-width:1080px;height:90vh;overflow:hidden;animation:rise .3s cubic-bezier(.2,.7,.3,1);display:flex;flex-direction:column;box-shadow:var(--shadow-md)}
+.detail-scroll{flex:1;overflow-y:auto;padding-bottom:20px}
+
+/* hero: clean white */
+.detail-hero{background:var(--surface);padding:36px 40px 28px;display:flex;align-items:flex-start;gap:22px;position:relative}
+.detail-avatar{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:600;flex-shrink:0}
+.detail-hero-info{flex:1;min-width:0}
+.detail-name{font-size:30px;font-weight:700;letter-spacing:-.025em;line-height:1.15;color:var(--text1)}
+.detail-kana{font-size:14px;color:var(--text3);margin-top:3px}
+.detail-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.detail-close-btn{position:absolute;top:24px;right:24px;width:36px;height:36px;border:none;background:var(--surface2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:18px;flex-shrink:0;transition:background .15s}
+.detail-close-btn:hover{background:var(--surface3)}
+
+/* 2-col grid */
+.detail-body{padding:24px 32px 8px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.detail-col-left{display:flex;flex-direction:column;gap:16px}
+.detail-col-right{display:flex;flex-direction:column;gap:16px}
+
+/* section card: borderless */
+.detail-section{background:var(--surface);border-radius:var(--radius);overflow:hidden;border:none;box-shadow:var(--shadow-sm)}
+.detail-section-hd{padding:18px 22px 4px;border:none;background:transparent}
+.detail-section-title{font-size:15px;font-weight:700;color:var(--text1);letter-spacing:-.01em}
+
+/* rows: whitespace instead of lines */
+.dfield{display:flex;align-items:center;padding:0 22px;border:none;transition:background .12s;min-height:50px}
+.dfield:hover{background:var(--surface2)}
+.dfield-label{font-size:13px;color:var(--text3);width:92px;flex-shrink:0;font-weight:500;padding-right:10px}
+.dfield-value{flex:1;font-size:15px;color:var(--text1);line-height:1.5;word-break:break-all;padding:12px 4px;font-weight:450}
+.dfield-value.empty-val{color:var(--border2);font-style:normal;font-size:13px}
+.dfield-edit-btn{width:30px;height:30px;border:none;background:transparent;color:var(--text3);cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .12s;opacity:0}
+.dfield:hover .dfield-edit-btn{opacity:1}
+.dfield-edit-btn:hover{background:var(--surface3);color:var(--accent)}
+.detail-section .dfield:last-child{padding-bottom:8px}
+
+/* editing */
+.dfield.editing{background:var(--surface2)!important;padding:10px 22px;gap:8px;flex-wrap:wrap;border-radius:12px;margin:4px 10px}
+.dfield.editing .dfield-label{color:var(--accent)}
+.dfield-input{flex:1;min-width:120px;border:none;border-radius:10px;background:#fff;font-size:15px;font-family:inherit;color:var(--text1);outline:none;padding:10px 14px;line-height:1.4;box-shadow:0 0 0 3px rgba(0,113,227,.2)}
+.dfield-actions{display:flex;gap:6px;flex-shrink:0}
+.dfield-save-btn{height:34px;padding:0 16px;border:none;border-radius:980px;background:var(--accent);color:#fff;font-size:13px;font-family:inherit;font-weight:500;cursor:pointer;white-space:nowrap;flex:none}
+.dfield-cancel-btn{height:34px;padding:0 14px;border:none;border-radius:980px;background:var(--surface3);color:var(--text2);font-size:13px;font-family:inherit;cursor:pointer;white-space:nowrap;flex:none}
+
+/* memo */
+.detail-memo-box{padding:8px 22px 18px;font-size:15px;color:var(--text2);line-height:1.8;white-space:pre-wrap;word-break:break-all;cursor:pointer;transition:background .12s;min-height:48px;border:none}
+.detail-memo-box:hover{background:var(--surface2)}
+.detail-memo-box.empty-val{color:var(--border2);font-style:normal;font-size:13px}
+.detail-memo-edit{width:100%;min-height:100px;border:none;background:var(--surface2);border-radius:12px;font-size:15px;font-family:inherit;color:var(--text1);outline:none;resize:vertical;padding:14px 16px;line-height:1.8;margin:4px 22px 8px;width:calc(100% - 44px)}
+.memo-edit-actions{display:flex;gap:8px;padding:4px 22px 16px;border:none}
+
+/* attach */
+.detail-attach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px;padding:8px 22px}
+.detail-add-attach{border:1.5px dashed var(--border2);border-radius:14px;padding:14px;text-align:center;cursor:pointer;transition:all .15s;margin:6px 22px 18px}
+.detail-add-attach:hover{border-color:var(--accent);background:var(--accent-bg)}
+.detail-add-attach p{font-size:13px;color:var(--text3);margin-top:4px}
+
+/* footer */
+.detail-footer{padding:14px 32px 20px;border:none;background:var(--bg);flex-shrink:0;display:flex;justify-content:center}
+.btn-del-full{width:auto;height:34px;padding:0 8px;border:none;border-radius:0;background:transparent;font-size:13px;font-family:inherit;color:#E30000;cursor:pointer;font-weight:500;transition:opacity .15s;display:flex;align-items:center;gap:5px;opacity:.75}
+.btn-del-full:hover{opacity:1;background:transparent}
+
+/* history */
+.history-add-form{padding:8px 22px 18px;border:none}
+.history-type-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.htype-btn{height:30px;padding:0 13px;border:none;border-radius:980px;background:var(--surface2);font-size:12px;font-weight:500;font-family:inherit;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap}
+.htype-btn:hover{background:var(--surface3)}
+.htype-btn.selected{background:var(--text1);color:#fff}
+.history-textarea{width:100%;border:none;border-radius:12px;padding:12px 14px;font-size:14px;font-family:inherit;color:var(--text1);background:var(--surface2);outline:none;resize:none;line-height:1.6;min-height:64px;transition:box-shadow .15s}
+.history-textarea:focus{box-shadow:0 0 0 4px rgba(0,113,227,.18);background:#fff}
+.history-add-actions{display:flex;justify-content:flex-end;margin-top:8px}
+.btn-history-add{height:34px;padding:0 16px;border:none;border-radius:980px;background:var(--accent);color:#fff;font-size:13px;font-family:inherit;font-weight:500;cursor:pointer;transition:background .15s}
+.btn-history-add:hover{background:var(--accent2)}
+.history-list{padding:4px 22px 18px;display:flex;flex-direction:column;gap:14px;max-height:380px;overflow-y:auto}
+.history-empty{padding:20px;text-align:center;font-size:13px;color:var(--text3)}
+.history-item{display:flex;gap:12px;position:relative}
+.history-line{position:absolute;left:14px;top:34px;bottom:-14px;width:1.5px;background:var(--surface3)}
+.history-item:last-child .history-line{display:none}
+.history-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;border:none;box-shadow:none}
+.history-content{flex:1;min-width:0}
+.history-header{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}
+.history-type-badge{font-size:11px;font-weight:600;padding:2px 9px;border-radius:980px}
+.history-date{font-size:11px;color:var(--text3)}
+.history-text{font-size:14px;color:var(--text1);line-height:1.7;white-space:pre-wrap;word-break:break-all;background:var(--surface2);border-radius:12px;padding:11px 14px;border:none}
+.history-del-btn{width:26px;height:26px;border:none;background:transparent;color:var(--text3);cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .12s}
+.history-del-btn:hover{background:var(--surface3);color:#E30000}
+
+/* hint */
+.detail-hint{font-size:12px;color:var(--text3);padding:0 4px 4px;letter-spacing:.01em;grid-column:1/-1}
+
+/* attach (form) */
+.attach-drop{border:1.5px dashed var(--border2);border-radius:16px;padding:28px;text-align:center;cursor:pointer;transition:all .18s;margin-bottom:14px;background:transparent}
+.attach-drop:hover,.attach-drop.drag-over{border-color:var(--accent);background:var(--accent-bg)}
+.attach-drop p{font-size:13px;color:var(--text3);margin-top:8px}
+.attach-drop svg{color:var(--text3)}
+.attach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px;margin-top:10px}
+.attach-thumb{position:relative;border-radius:14px;overflow:hidden;border:none;aspect-ratio:1;cursor:pointer;background:var(--surface2)}
+.attach-thumb img{width:100%;height:100%;object-fit:cover}
+.attach-thumb .attach-del{position:absolute;top:6px;right:6px;width:22px;height:22px;background:rgba(0,0,0,.55);border:none;border-radius:50%;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;backdrop-filter:blur(4px)}
+.attach-file{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface2);border-radius:12px;border:none;cursor:pointer;transition:background .15s;margin-bottom:6px}
+.attach-file:hover{background:var(--surface3)}
+.attach-file-icon{font-size:20px;flex-shrink:0}
+.attach-file-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--text1);font-weight:500}
+.attach-file-size{font-size:11px;color:var(--text3);flex-shrink:0}
+.attach-file-del{width:26px;height:26px;border:none;background:transparent;color:var(--text3);cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .12s}
+.attach-file-del:hover{background:#fff;color:#E30000}
+
+/* lightbox */
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(10px)}
+.lightbox.open{display:flex}
+.lightbox img{max-width:92vw;max-height:88vh;border-radius:16px;object-fit:contain}
+.lightbox-close{position:absolute;top:24px;right:24px;width:42px;height:42px;background:rgba(255,255,255,.14);border:none;border-radius:50%;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+
+/* settings */
+.tag-list-manage{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.tag-manage-row{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface2);border-radius:14px;border:none}
+.tag-swatch{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.tag-manage-name{flex:1;font-size:14px;font-weight:500}
+.tag-manage-count{font-size:12px;color:var(--text3);margin-right:4px}
+.btn-sm-del{width:30px;height:30px;border:none;background:transparent;color:var(--text3);cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0}
+.btn-sm-del:hover{background:#fff;color:#E30000}
+.color-picker-row{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 16px}
+.color-dot{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;transition:all .15s}
+.color-dot.selected{border-color:var(--text1);transform:scale(1.18)}
+.add-row{display:flex;gap:10px;align-items:center}
+.add-input{flex:1;height:46px;border:none;border-radius:12px;padding:0 16px;font-size:15px;font-family:inherit;color:var(--text1);background:var(--surface2);outline:none;transition:box-shadow .18s}
+.add-input:focus{box-shadow:0 0 0 4px rgba(0,113,227,.18);background:#fff}
+.btn-add{height:46px;padding:0 22px;border:none;border-radius:980px;background:var(--accent);color:#fff;font-size:14px;font-family:inherit;font-weight:500;cursor:pointer;white-space:nowrap;transition:background .15s}
+.btn-add:hover{background:var(--accent2)}
+.divider{border:none;border-top:1px solid var(--surface3);margin:22px 0}
+.field-list{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.field-row{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface2);border-radius:14px;border:none}
+.field-row-name{flex:1;font-size:14px;font-weight:500}
+.field-row-type{font-size:11px;color:var(--text3);background:#fff;border:none;border-radius:980px;padding:3px 10px;font-weight:500}
+.type-select{height:46px;border:none;border-radius:12px;padding:0 12px;font-size:14px;font-family:inherit;color:var(--text1);background:var(--surface2);outline:none;flex-shrink:0}
+.settings-nav{display:flex;gap:24px;margin-bottom:28px;border-bottom:1px solid var(--surface3)}
+.settings-tab{padding:10px 2px;font-size:14px;font-family:inherit;font-weight:500;border:none;background:transparent;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.settings-tab:hover{color:var(--text1)}
+.settings-tab.active{color:var(--text1);border-bottom-color:var(--text1);font-weight:600}
+
+/* toast */
+.toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:rgba(29,29,31,.92);color:#fff;padding:12px 24px;border-radius:980px;font-size:14px;font-weight:500;opacity:0;transition:opacity .25s;pointer-events:none;z-index:999;white-space:nowrap;backdrop-filter:blur(8px)}
+.toast.show{opacity:1}
+
+/* responsive */
+@media(max-width:700px){
+  .detail-panel{width:100%;max-width:100%;height:95vh;border-radius:24px 24px 0 0}
+  .detail-body{grid-template-columns:1fr;padding:16px 16px 8px}
+  .detail-overlay{align-items:flex-end}
+  .detail-hero{padding:28px 20px 22px}
+  .detail-name{font-size:24px}
+}
+/* iOS Safariは16px未満の入力欄にフォーカスすると画面全体をズームするため、
+   モバイルでは入力系のフォントを16px以上に強制する（インラインstyleより優先させる） */
+@media(max-width:700px){
+  input,select,textarea{font-size:16px!important}
+}
+@media(max-width:480px){
+  .header{padding:0 16px;height:58px}
+  .header-right{gap:6px}
+  .logo{font-size:17px}
+  .logo-sub{font-size:10px}
+  .filter-btn .btn-label{display:none}
+  .filter-btn{padding:0 6px;height:36px}
+  .btn-primary{padding:0 14px}
+  .toolbar{padding:24px 18px 8px}
+  .stats-bar,.tag-filters{padding-left:18px;padding-right:18px}
+  .customer-list{padding:0 18px 90px}
+  .meta-date{display:none}
+  .form-row{grid-template-columns:1fr}
+  .modal-box{padding:28px 22px 36px}
+  .attach-grid{grid-template-columns:repeat(auto-fill,minmax(75px,1fr))}
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-wrap">
+    <div class="logo-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    </div>
+    <div>
+      <div class="logo">クライアントカルテ</div>
+      <div class="logo-sub">CLIENT KARTE</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="filter-btn" onclick="openMailModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      <span class="btn-label">メール</span>
+    </button>
+    <button class="filter-btn" onclick="openSettings()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      <span class="btn-label">設定</span>
+    </button>
+    <button class="btn-primary" onclick="openAddModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span class="btn-label">新規登録</span>
+    </button>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="search-wrap">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input class="search-input" id="searchInput" placeholder="名前・電話・住所・メモで検索…" oninput="onSearch()">
+  </div>
+  <select class="sort-btn" id="sortSelect" onchange="onSortChange()" style="cursor:pointer">
+    <option value="name">名前順</option>
+    <option value="date">登録日順</option>
+    <option value="contact">最終対応順</option>
+  </select>
+</div>
+<div class="tag-filters" id="tagFilters"></div>
+<div class="stats-bar"><span class="stat" id="statsText"></span></div>
+<div class="customer-list" id="customerList"></div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="addModal" onclick="closeIfOverlay(event,'addModal')">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">新規顧客登録</span>
+      <button class="modal-close" onclick="closeModal('addModal')">×</button>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label class="form-label">氏名 *</label>
+        <input class="form-input" id="f-name" placeholder="山田 太郎">
+      </div>
+      <div class="form-field">
+        <label class="form-label">フリガナ</label>
+        <input class="form-input" id="f-kana" placeholder="ヤマダ タロウ">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label class="form-label">電話番号</label>
+        <input class="form-input" id="f-phone" placeholder="090-0000-0000" type="tel">
+      </div>
+      <div class="form-field">
+        <label class="form-label">メールアドレス</label>
+        <input class="form-input" id="f-email" placeholder="example@email.com" type="email">
+      </div>
+    </div>
+    <div class="form-field">
+      <label class="form-label">タグ</label>
+      <select class="form-select" id="f-tag"><option value="">なし</option></select>
+    </div>
+    <div class="form-field">
+      <label class="form-label">郵便番号</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="form-input" id="f-zip" placeholder="000-0000" maxlength="8" style="max-width:140px" oninput="onZipInput(this)">
+        <button type="button" id="zipBtn" onclick="lookupZip()" class="sort-btn" style="height:46px;padding:0 14px;font-size:14px;white-space:nowrap">住所を検索</button>
+        <span id="zipStatus" style="font-size:12px;color:var(--text3)"></span>
+      </div>
+    </div>
+    <div class="form-field">
+      <label class="form-label">住所</label>
+      <input class="form-input" id="f-address" placeholder="郵便番号から自動入力、または直接入力">
+    </div>
+    <div id="customFieldsForm"></div>
+    <div class="form-field">
+      <label class="form-label">メモ</label>
+      <textarea class="form-textarea" id="f-memo" placeholder="特記事項・備考など…"></textarea>
+    </div>
+    <!-- 写真・書類添付 -->
+    <div class="form-field">
+      <label class="form-label">写真・書類の添付</label>
+      <div class="attach-drop" id="attachDrop" onclick="document.getElementById('attachInput').click()"
+        ondragover="event.preventDefault();this.classList.add('drag-over')"
+        ondragleave="this.classList.remove('drag-over')"
+        ondrop="onDropFiles(event)">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p>タップしてファイルを選択、またはドラッグ&ドロップ</p>
+        <p style="font-size:11px;margin-top:2px">写真・PDF・書類など複数可</p>
+      </div>
+      <input type="file" id="attachInput" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none" onchange="onSelectFiles(this)">
+      <div id="attachPreview"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeModal('addModal')">キャンセル</button>
+      <button class="btn-save" onclick="saveCustomer()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Panel -->
+<div class="detail-overlay" id="detailOverlay" onclick="closeIfOverlay(event,'detailOverlay')">
+  <div class="detail-panel" id="detailPanel"></div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">×</button>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal" onclick="closeIfOverlay(event,'settingsModal')">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-header">
+      <span class="modal-title">設定</span>
+      <button class="modal-close" onclick="closeModal('settingsModal')">×</button>
+    </div>
+    <div class="settings-nav">
+      <button class="settings-tab active" id="tab-tags" onclick="switchTab('tags')">タグ管理</button>
+      <button class="settings-tab" id="tab-fields" onclick="switchTab('fields')">項目追加</button>
+      <button class="settings-tab" id="tab-data" onclick="switchTab('data')">データ管理</button>
+    </div>
+    <div id="pane-tags">
+      <div class="tag-list-manage" id="tagManageList"></div>
+      <hr class="divider">
+      <p style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:8px">新しいタグを追加</p>
+      <div class="color-picker-row" id="colorPicker"></div>
+      <div class="add-row">
+        <input class="add-input" id="newTagName" placeholder="タグ名を入力…" onkeydown="if(event.key==='Enter')addTag()">
+        <button class="btn-add" onclick="addTag()">追加</button>
+      </div>
+    </div>
+    <div id="pane-fields" style="display:none">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">顧客登録フォームに独自の項目を追加できます。</p>
+      <div class="field-list" id="fieldManageList"></div>
+      <hr class="divider">
+      <p style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px">新しい項目を追加</p>
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <input class="add-input" id="newFieldName" placeholder="項目名（例：担当者名）" onkeydown="if(event.key==='Enter')addField()" style="min-width:0">
+        <select class="type-select" id="newFieldType">
+          <option value="text">テキスト</option>
+          <option value="number">数字</option>
+          <option value="date">日付</option>
+          <option value="url">URL</option>
+        </select>
+        <button class="btn-add" onclick="addField()">追加</button>
+      </div>
+      <p style="font-size:11px;color:var(--text3)">追加した項目は顧客登録・編集フォームと詳細画面に表示されます。</p>
+    </div>
+    <div id="pane-data" style="display:none">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600">📦 バックアップ（全データ）</p>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">顧客・タグ・項目・履歴・添付ファイルをすべて1つのファイルに保存します。パソコンの買い替えや別のスマホへの引っ越しにも使えます。</p>
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+        <button class="btn-add" onclick="exportBackup()" style="flex:1;min-width:140px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          バックアップを保存
+        </button>
+        <button class="btn-add" onclick="document.getElementById('importInput').click()" style="flex:1;min-width:140px;background:var(--surface);color:var(--accent);border:1.5px solid var(--accent)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          バックアップから復元
+        </button>
+        <input type="file" id="importInput" accept=".json" style="display:none" onchange="importBackup(this)">
+      </div>
+      <hr class="divider">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600">📊 CSV書き出し（Excel用）</p>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">顧客一覧をExcelやGoogleスプレッドシートで開ける形式で書き出します（添付ファイルは含まれません）。</p>
+      <button class="btn-add" onclick="exportCSV()" style="width:100%;background:var(--surface);color:var(--text2);border:1.5px solid var(--border)">CSVをダウンロード</button>
+      <hr class="divider">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600">🗑️ 顧客の削除</p>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">削除した顧客は履歴・添付ファイルごと完全に消え、元に戻せません。念のため事前のバックアップ保存をおすすめします。</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="delCustomerSelect" class="form-input" style="flex:1;min-width:180px;height:42px"></select>
+        <button class="btn-add" onclick="deleteCustomerFromSettings()" style="min-width:120px;background:var(--surface);color:#E30000;border:1.5px solid #E30000">この顧客を削除</button>
+      </div>
+      <hr class="divider">
+      <p style="font-size:11px;color:var(--text3);line-height:1.7">💡 データはこのブラウザ内に保存されています。ブラウザの履歴・キャッシュを削除するとデータが消える場合があるため、<strong style="color:#c2410c">定期的なバックアップ保存をおすすめします</strong>。</p>
+    </div>
+  </div>
+</div>
+
+<!-- Mail Modal -->
+<div class="modal-overlay" id="mailModal" onclick="closeIfOverlay(event,'mailModal')">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-header">
+      <span class="modal-title">一斉メール送信</span>
+      <button class="modal-close" onclick="closeModal('mailModal')">×</button>
+    </div>
+    <div class="form-field">
+      <label class="form-label">送信先</label>
+      <select class="form-select" id="mailTagSelect" onchange="renderMailRecipients()">
+        <option value="">すべてのクライアント</option>
+      </select>
+    </div>
+    <div class="form-field">
+      <div id="mailRecipientInfo" style="font-size:13px;color:var(--text2);background:var(--surface2);border-radius:12px;padding:12px 16px;line-height:1.7"></div>
+    </div>
+    <div class="form-field">
+      <label class="form-label">件名（任意）</label>
+      <input class="form-input" id="mailSubject" placeholder="例：夏季休業のお知らせ">
+    </div>
+    <div class="form-field">
+      <label class="form-label">本文（任意）</label>
+      <textarea class="form-textarea" id="mailBody" placeholder="メールソフトで編集もできます" style="min-height:120px"></textarea>
+    </div>
+    <div class="form-actions" style="flex-direction:column;gap:10px">
+      <button class="btn-save" style="flex:none;width:100%" onclick="launchMail()">
+        ✉️ メールソフトで作成する
+      </button>
+      <button class="btn-cancel" style="flex:none;width:100%" onclick="copyMailAddrs()">📋 宛先アドレスだけコピーする</button>
+    </div>
+    <p style="font-size:11px;color:var(--text3);margin-top:14px;line-height:1.7">💡 宛先は<strong>BCC</strong>に入るため、お客様同士にアドレスは見えません。お使いのメールソフト（Gmail・Outlook等）が起動します。宛先が多い場合は数回に分けて送信してください。</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TAG_COLORS=[
+  {bg:'#f0fdf4',text:'#15803d',dot:'#22c55e'},
+  {bg:'#fef9c3',text:'#a16207',dot:'#eab308'},
+  {bg:'#fdf2f8',text:'#9d174d',dot:'#ec4899'},
+  {bg:'#f0f9ff',text:'#0369a1',dot:'#38bdf8'},
+  {bg:'#f3e8ff',text:'#7e22ce',dot:'#a855f7'},
+  {bg:'#ffedd5',text:'#c2410c',dot:'#f97316'},
+  {bg:'#d1fae5',text:'#065f46',dot:'#10b981'},
+  {bg:'#e0f2fe',text:'#075985',dot:'#0ea5e9'},
+];
+const FIELD_TYPE_LABELS={text:'テキスト',number:'数字',date:'日付',url:'URL'};
+const FIELD_ICONS={text:'📝',number:'🔢',date:'📅',url:'🔗'};
+const AVATAR_COLORS=[
+  ['#dbeafe','#1d4ed8'],['#dcfce7','#15803d'],['#fef9c3','#a16207'],
+  ['#fce7f3','#9d174d'],['#f3e8ff','#7e22ce'],['#ffedd5','#c2410c'],
+  ['#e0f2fe','#0369a1'],['#d1fae5','#065f46']
+];
+let selectedColorIdx=0;
+let pendingFiles=[]; // {id,name,size,type,dataUrl}
+
+function getAvatarColor(n){let h=0;for(let c of n)h=(h*31+c.charCodeAt(0))&0xffff;return AVATAR_COLORS[h%AVATAR_COLORS.length]}
+function initials(n){const p=n.trim().split(/\s+/);return p.length>=2?p[0][0]+p[1][0]:n.slice(0,2)}
+function formatDate(iso){const d=new Date(iso);return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`}
+function getTagStyle(n){const t=tags.find(t=>t.name===n);return t?TAG_COLORS[t.colorIdx]||TAG_COLORS[0]:{bg:'#f1f0ec',text:'#5c5a55'}}
+function fmtSize(b){return b<1024?b+'B':b<1048576?(b/1024).toFixed(0)+'KB':(b/1048576).toFixed(1)+'MB'}
+function fileIcon(type){if(type.startsWith('image/'))return'🖼️';if(type==='application/pdf')return'📄';if(type.includes('word'))return'📝';if(type.includes('sheet')||type.includes('excel'))return'📊';return'📎'}
+function esc(s){return(s??'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+const _storedCustomers=localStorage.getItem('crm_customers');
+let customers=JSON.parse(_storedCustomers||'[]');
+let tags=JSON.parse(localStorage.getItem('crm_tags')||'null');
+let customFields=JSON.parse(localStorage.getItem('crm_fields')||'null');
+let editingId=null,activeTag=null,searchQuery='';
+
+if(!tags){tags=[{name:'契約中',colorIdx:0},{name:'既存',colorIdx:3},{name:'VIP',colorIdx:4}];localStorage.setItem('crm_tags',JSON.stringify(tags))}
+if(!customFields){customFields=[];localStorage.setItem('crm_fields',JSON.stringify(customFields))}
+/* デモデータの投入は「初回起動時（保存データ自体が存在しない時）」のみ。
+   運用中に顧客を全削除しても復活しないよう、空配列とは区別する */
+if(_storedCustomers===null){
+  customers=[
+    {id:'1',name:'田中 恵子',kana:'タナカ ケイコ',phone:'090-1234-5678',email:'keiko@example.com',tag:'契約中',zip:'604-8301',address:'京都府京都市中京区',memo:'毎月の定例ミーティングあり',customData:{},attachments:[],createdAt:'2024-11-10T09:00:00'},
+    {id:'2',name:'鈴木 一郎',kana:'スズキ イチロウ',phone:'080-2345-6789',email:'ichiro@example.com',tag:'既存',zip:'530-0001',address:'大阪府大阪市北区',memo:'来月中に契約更新予定',customData:{},attachments:[],createdAt:'2024-12-03T14:30:00'},
+    {id:'3',name:'山本 花子',kana:'ヤマモト ハナコ',phone:'070-3456-7890',email:'hanako@example.com',tag:'VIP',zip:'606-8501',address:'京都府京都市左京区',memo:'長年のお得意様',customData:{},attachments:[],createdAt:'2025-01-15T10:00:00'},
+    {id:'4',name:'中村 健太',kana:'ナカムラ ケンタ',phone:'090-4567-8901',email:'kenta@example.com',tag:'契約中',zip:'520-0801',address:'滋賀県大津市',memo:'紹介経由',customData:{},attachments:[],createdAt:'2025-02-20T11:00:00'},
+    {id:'5',name:'小林 美咲',kana:'コバヤシ ミサキ',phone:'080-5678-9012',email:'misaki@example.com',tag:'既存',zip:'611-0021',address:'京都府宇治市',memo:'ウェブ経由で問い合わせ',customData:{},attachments:[],createdAt:'2025-03-08T15:00:00'},
+    {id:'6',name:'伊藤 誠',kana:'イトウ マコト',phone:'070-6789-0123',email:'makoto@example.com',tag:'VIP',zip:'590-0001',address:'大阪府堺市',memo:'不動産関連書類要確認',customData:{},attachments:[],createdAt:'2025-04-01T09:30:00'},
+  ];
+  localStorage.setItem('crm_customers',JSON.stringify(customers));
+}
+
+/* ── 履歴種別マイグレーション：旧「🏢 施術」を「✨ リソリューション」へ ── */
+(function migrateHistoryTypes(){
+  let changed=false;
+  customers.forEach(c=>(c.history||[]).forEach(h=>{
+    if(h.type==='🏢 施術'){h.type='✨ リソリューション';changed=true;}
+  }));
+  if(changed)try{localStorage.setItem('crm_customers',JSON.stringify(customers))}catch(e){}
+})();
+
+function saveData(){
+  try{
+    localStorage.setItem('crm_customers',JSON.stringify(customers));
+    return true;
+  }catch(e){
+    // 容量超過などで保存に失敗したら、メモリ上の変更を保存済みの状態に巻き戻す
+    customers=JSON.parse(localStorage.getItem('crm_customers')||'[]');
+    alert('⚠️ 保存できませんでした\n\n保存容量がいっぱいの可能性があります。今回の変更は保存されていません。\n\n設定 → データ管理でバックアップを保存したうえで、不要な添付ファイルや履歴を削除して容量を空けてください。');
+    return false;
+  }
+}
+function saveTags(){localStorage.setItem('crm_tags',JSON.stringify(tags))}
+function saveFields(){localStorage.setItem('crm_fields',JSON.stringify(customFields))}
+
+/* search/filter */
+function onSearch(){searchQuery=document.getElementById('searchInput').value;renderList()}
+function getFiltered(){
+  let list=[...customers];
+  if(searchQuery){const q=searchQuery.toLowerCase();list=list.filter(c=>c.name.toLowerCase().includes(q)||(c.kana||'').toLowerCase().includes(q)||(c.phone||'').replace(/-/g,'').includes(q.replace(/-/g,''))||(c.address||'').toLowerCase().includes(q)||(c.email||'').toLowerCase().includes(q)||(c.memo||'').toLowerCase().includes(q))}
+  if(activeTag)list=list.filter(c=>c.tag===activeTag);
+  const sort=document.getElementById('sortSelect').value;
+  if(sort==='name')list.sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+  else if(sort==='contact')list.sort((a,b)=>lastContactTime(b)-lastContactTime(a));
+  else list.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  return list;
+}
+
+function lastContactTime(c){
+  const h=c.history||[];
+  if(!h.length)return 0;
+  return Math.max(...h.map(x=>new Date(x.date).getTime()));
+}
+
+function lastContactLabel(c){
+  const t=lastContactTime(c);
+  if(!t)return null;
+  const days=Math.floor((Date.now()-t)/86400000);
+  if(days===0)return'今日対応';
+  if(days===1)return'昨日対応';
+  if(days<30)return`${days}日前に対応`;
+  if(days<365)return`${Math.floor(days/30)}ヶ月前に対応`;
+  return`${Math.floor(days/365)}年前に対応`;
+}
+function highlight(text,q){if(!q)return esc(text);const i=text.toLowerCase().indexOf(q.toLowerCase());if(i<0)return esc(text);return esc(text.slice(0,i))+'<mark>'+esc(text.slice(i,i+q.length))+'</mark>'+esc(text.slice(i+q.length))}
+
+function renderTagFilters(){
+  document.getElementById('tagFilters').innerHTML=
+    ['すべて',...tags.map(t=>t.name)].map(t=>{const isAll=t==='すべて',active=isAll?!activeTag:activeTag===t;return`<button class="tag-filter ${active?'active':''}" data-tag="${isAll?'':esc(t)}" onclick="setTag(this.dataset.tag)">${esc(t)}</button>`}).join('');
+}
+function setTag(t){activeTag=t||null;try{localStorage.setItem('crm_activeTag',activeTag||'')}catch(e){}renderTagFilters();renderList()}
+function onSortChange(){try{localStorage.setItem('crm_sort',document.getElementById('sortSelect').value)}catch(e){}renderList()}
+
+function renderList(){
+  const list=getFiltered();
+  const tagStats=tags.map(t=>{
+    const n=customers.filter(c=>c.tag===t.name).length;
+    return n?`${esc(t.name)} ${n}件`:null;
+  }).filter(Boolean).join('　·　');
+  document.getElementById('statsText').innerHTML=`<strong style="color:var(--text1)">${list.length}件</strong> / 全${customers.length}件${tagStats?`<span style="color:var(--text3)">　｜　${tagStats}</span>`:''}`;
+  const el=document.getElementById('customerList');
+  if(!list.length){el.innerHTML=`<div class="empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>該当する顧客が見つかりません</p></div>`;return}
+  el.innerHTML=list.map(c=>{
+    const [bg,fg]=getAvatarColor(c.name),ts=getTagStyle(c.tag);
+    const attCount=(c.attachments||[]).length;
+    const lc=lastContactLabel(c);
+    return`<div class="customer-card" onclick="openDetail('${c.id}')">
+      <div class="avatar" style="background:${bg};color:${fg}">${initials(c.name)}</div>
+      <div class="customer-info">
+        <div class="customer-name">${highlight(c.name,searchQuery)}</div>
+        <div class="customer-sub">
+          ${c.kana?`<span>${esc(c.kana)}</span>`:''}
+          ${c.phone?`<span>${esc(c.phone)}</span>`:''}
+          ${c.tag?`<span class="tag" style="background:${ts.bg};color:${ts.text}">${esc(c.tag)}</span>`:''}
+          ${attCount?`<span style="font-size:11px;color:var(--text3)">📎${attCount}</span>`:''}
+          ${lc?`<span style="font-size:12px;color:var(--text3);font-weight:500">💬 ${lc}</span>`:''}
+        </div>
+      </div>
+      <span class="meta-date">${formatDate(c.createdAt)}</span>
+    </div>`}).join('');
+}
+
+/* detail */
+function openDetail(id){
+  pendingHistFiles=[];
+  const c=customers.find(x=>x.id===id);if(!c)return;
+  const [bg,fg]=getAvatarColor(c.name),ts=getTagStyle(c.tag);
+  const atts=c.attachments||[];
+  const imgAtts=atts.filter(a=>a.type.startsWith('image/'));
+  const fileAtts=atts.filter(a=>!a.type.startsWith('image/'));
+
+  const customRows=customFields.map(f=>{
+    const v=(c.customData||{})[f.id]||'';
+    const display=f.type==='url'&&v?`<a href="${esc(v)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(v)}</a>`:esc(v);
+    return dfieldHTML(`cf_${f.id}`,f.name,display||'',v,'text',id,f.id);
+  }).join('');
+
+  // 左下の独立した添付ファイルセクションは廃止（添付はご対応履歴内で管理）
+  const attHTML='';
+
+  document.getElementById('detailPanel').innerHTML=`
+    <div class="detail-scroll">
+      <div class="detail-hero">
+        <div class="detail-avatar" style="background:${bg};color:${fg}">${initials(c.name)}</div>
+        <div class="detail-hero-info">
+          <div class="detail-name" id="detail-hero-name">${esc(c.name)}</div>
+          <div class="detail-kana" id="detail-hero-kana">${esc(c.kana||'')}</div>
+          <div class="detail-badges">
+            ${c.tag?`<span class="tag" style="background:${ts.bg};color:${ts.text}">${esc(c.tag)}</span>`:''}
+            ${c.phone?`<a href="tel:${esc(c.phone.replace(/[^+\d]/g,''))}" style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border-radius:980px;padding:4px 14px;color:var(--accent);font-size:12px;font-weight:600;text-decoration:none" onclick="event.stopPropagation()">📞 ${esc(c.phone)}</a>`:''}
+          </div>
+        </div>
+        <button class="detail-close-btn" onclick="closeModal('detailOverlay')">×</button>
+      </div>
+
+      <div class="detail-body">
+        <div class="detail-hint">✏️ 各項目をタップして直接編集できます</div>
+
+        <!-- 左カラム：基本情報 ＋ 連絡先 ＋ 追加項目 ＋ 登録情報 ＋ メモ ＋ 添付ファイル -->
+        <div class="detail-col-left">
+          <div class="detail-section">
+            <div class="detail-section-hd"><span class="detail-section-title">基本情報</span></div>
+            ${dfieldHTML('name','氏名',esc(c.name),c.name,'text',id)}
+            ${dfieldHTML('kana','フリガナ',esc(c.kana||''),c.kana||'','text',id)}
+            ${dfieldHTML('tag','タグ',c.tag?`<span class="tag" style="background:${ts.bg};color:${ts.text}">${esc(c.tag)}</span>`:'',c.tag||'','tag',id)}
+          </div>
+
+          <div class="detail-section">
+            <div class="detail-section-hd"><span class="detail-section-title">連絡先</span></div>
+            ${dfieldHTML('phone','電話番号',esc(c.phone||''),c.phone||'','tel',id)}
+            ${dfieldHTML('email','メール',c.email?`<a href="mailto:${esc(c.email)}" style="color:var(--accent);text-decoration:none" onclick="event.stopPropagation()">${esc(c.email)}</a>`:'',c.email||'','email',id)}
+            ${dfieldHTML('zip','郵便番号',esc(c.zip||''),c.zip||'','text',id)}
+            ${dfieldHTML('address','住所',esc(c.address||''),c.address||'','text',id)}
+          </div>
+
+          ${customFields.length?`<div class="detail-section"><div class="detail-section-hd"><span class="detail-section-title">追加項目</span></div>${customRows}</div>`:''}
+
+          <div class="detail-section">
+            <div class="detail-section-hd"><span class="detail-section-title">登録情報</span></div>
+            <div class="dfield"><span class="dfield-label">登録日</span><span class="dfield-value">${formatDate(c.createdAt)}</span></div>
+          </div>
+
+          <div class="detail-section">
+            <div class="detail-section-hd"><span class="detail-section-title">メモ</span></div>
+            <div id="memo-view-${id}" class="detail-memo-box ${c.memo?'':'empty-val'}" onclick="startMemoEdit('${id}')">${esc(c.memo)||'タップしてメモを追加…'}</div>
+            <div id="memo-edit-${id}" style="display:none">
+              <textarea class="detail-memo-edit" id="memo-ta-${id}">${esc(c.memo||'')}</textarea>
+              <div class="memo-edit-actions">
+                <button class="dfield-save-btn" onclick="saveMemo('${id}')">保存</button>
+                <button class="dfield-cancel-btn" onclick="cancelMemoEdit('${id}')">キャンセル</button>
+              </div>
+            </div>
+          </div>
+
+          ${attHTML}
+        </div>
+
+        <!-- 右カラム：対応履歴 -->
+        <div class="detail-col-right">
+          <div class="detail-section">
+            <div class="detail-section-hd"><span class="detail-section-title">対応履歴</span></div>
+            <div class="history-add-form">
+              <div class="history-type-row" id="htypes-${id}">
+                ${['✨ リソリューション','📞 電話','✉️ メール','📝 書類','💬 その他'].map((t,i)=>`<button class="htype-btn${i===0?' selected':''}" onclick="selectHType(this,'${id}')">${t}</button>`).join('')}
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+                <input class="history-textarea" id="hstaff-${id}" list="staffList" placeholder="担当者" style="min-height:unset;height:38px;padding:8px 14px;flex:1;max-width:160px">
+                <datalist id="staffList">${getStaffNames().map(s=>`<option value="${esc(s)}">`).join('')}</datalist>
+                <button class="htype-btn" onclick="document.getElementById('hfile-${id}').click()" style="height:38px" title="契約書などを添付">📎 契約書を添付<span id="hfilecount-${id}" style="margin-left:4px;color:var(--accent);font-weight:700"></span></button>
+                <input type="file" id="hfile-${id}" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none" onchange="onHistFiles(this,'${id}')">
+              </div>
+              <textarea class="history-textarea" id="hta-${id}" placeholder="対応内容を入力…（Ctrl+Enterで追加）" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')addHistory('${id}')"></textarea>
+              <div class="history-add-actions">
+                <button class="btn-history-add" onclick="addHistory('${id}')">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:3px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  カルテに記録
+                </button>
+              </div>
+            </div>
+            <div class="history-list" id="hlist-${id}">
+              ${renderHistoryList(c)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+function dfieldHTML(fieldKey,label,displayHTML,rawVal,type,customerId,cfId){
+  const isEmpty=!rawVal;
+  const pencilIcon=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  return`<div class="dfield" id="dfield-${fieldKey}-${customerId}">
+    <span class="dfield-label">${label}</span>
+    <span class="dfield-value ${isEmpty?'empty-val':''}" id="dval-${fieldKey}-${customerId}">${isEmpty?'未入力':displayHTML}</span>
+    <button class="dfield-edit-btn" onclick="startFieldEdit('${fieldKey}','${customerId}','${encodeURIComponent(rawVal).replace(/'/g,'%27')}','${type}','${cfId||''}')" title="編集">${pencilIcon}</button>
+  </div>`;
+}
+
+function startFieldEdit(fieldKey,customerId,encodedVal,type,cfId){
+  const rawVal=decodeURIComponent(encodedVal);
+  const rowId=`dfield-${fieldKey}-${customerId}`;
+  const row=document.getElementById(rowId);
+  if(!row)return;
+  row.classList.add('editing');
+  const c=customers.find(x=>x.id===customerId);
+  let inputHTML='';
+  if(type==='tag'){
+    const opts=tags.map(t=>`<option value="${esc(t.name)}" ${rawVal===t.name?'selected':''}>${esc(t.name)}</option>`).join('');
+    inputHTML=`<select class="dfield-input" id="dedit-${fieldKey}-${customerId}" style="height:42px"><option value="">なし</option>${opts}</select>`;
+  }else{
+    inputHTML=`<input class="dfield-input" id="dedit-${fieldKey}-${customerId}" type="${type==='tel'?'tel':type==='email'?'email':'text'}" value="${esc(rawVal)}" placeholder="${esc(document.querySelector(`#${rowId} .dfield-label`).textContent)}を入力">`;
+  }
+  row.innerHTML=`
+    <span class="dfield-label">${document.querySelector('#'+rowId+' .dfield-label')?.textContent||''}</span>
+    ${inputHTML}
+    <div class="dfield-actions">
+      <button class="dfield-cancel-btn" onclick="cancelFieldEdit('${fieldKey}','${customerId}')">キャンセル</button>
+      <button class="dfield-save-btn" onclick="saveFieldEdit('${fieldKey}','${customerId}','${type}','${cfId||''}')">保存</button>
+    </div>`;
+  // Re-set label since innerHTML replaced it
+  row.querySelector('.dfield-label').textContent=({name:'氏名',kana:'フリガナ',tag:'タグ',phone:'電話番号',email:'メール',zip:'郵便番号',address:'住所'}[fieldKey])||fieldKey;
+  document.getElementById(`dedit-${fieldKey}-${customerId}`)?.focus();
+}
+
+function cancelFieldEdit(fieldKey,customerId){
+  openDetail(customerId);// re-render
+}
+
+function saveFieldEdit(fieldKey,customerId,type,cfId){
+  const input=document.getElementById(`dedit-${fieldKey}-${customerId}`);
+  if(!input)return;
+  const newVal=input.value.trim();
+  const idx=customers.findIndex(c=>c.id===customerId);
+  if(idx<0)return;
+  if(cfId){
+    if(!customers[idx].customData)customers[idx].customData={};
+    customers[idx].customData[cfId]=newVal;
+  }else{
+    customers[idx][fieldKey]=newVal;
+  }
+  const ok=saveData();
+  renderTagFilters();renderList();
+  openDetail(customerId);
+  if(ok)showToast('保存しました');
+}
+
+function startMemoEdit(id){
+  document.getElementById(`memo-view-${id}`).style.display='none';
+  document.getElementById(`memo-edit-${id}`).style.display='block';
+  document.getElementById(`memo-ta-${id}`).focus();
+}
+function cancelMemoEdit(id){
+  document.getElementById(`memo-view-${id}`).style.display='';
+  document.getElementById(`memo-edit-${id}`).style.display='none';
+}
+function saveMemo(id){
+  const val=document.getElementById(`memo-ta-${id}`).value;
+  const idx=customers.findIndex(c=>c.id===id);
+  if(idx<0)return;
+  customers[idx].memo=val;
+  const ok=saveData();openDetail(id);if(ok)showToast('メモを保存しました');
+}
+
+async function addDetailAttachment(customerId,input){
+  const newFiles=await readFilesAsBase64(input.files);
+  const idx=customers.findIndex(c=>c.id===customerId);
+  if(idx<0)return;
+  customers[idx].attachments=[...(customers[idx].attachments||[]),...newFiles];
+  const ok=saveData();renderList();openDetail(customerId);
+  if(ok)showToast(`${newFiles.length}件を追加しました`);
+  input.value='';
+}
+
+function escAttr(s){return(s||'').replace(/"/g,'&quot;')}
+
+function deleteAttachment(customerId,attId){
+  const c=customers.find(x=>x.id===customerId);if(!c)return;
+  c.attachments=(c.attachments||[]).filter(a=>a.id!==attId);
+  saveData();openDetail(customerId);showToast('削除しました');
+}
+
+function downloadFile(dataUrl,name){
+  const a=document.createElement('a');a.href=dataUrl;a.download=name;a.click();
+}
+
+/* add/edit modal */
+function renderCustomFieldsForm(customData){
+  const w=document.getElementById('customFieldsForm');
+  if(!customFields.length){w.innerHTML='';return}
+  w.innerHTML=customFields.map(f=>{
+    const val=(customData||{})[f.id]||'';
+    const t=f.type==='number'?'number':f.type==='date'?'date':f.type==='url'?'url':'text';
+    return`<div class="form-field"><label class="form-label">${esc(f.name)}</label><input class="form-input" id="cf-${f.id}" type="${t}" value="${esc(val)}" placeholder="${esc(f.name)}を入力"></div>`;
+  }).join('');
+}
+
+function renderAttachPreview(){
+  const w=document.getElementById('attachPreview');
+  if(!pendingFiles.length){w.innerHTML='';return}
+  const imgs=pendingFiles.filter(f=>f.type.startsWith('image/'));
+  const files=pendingFiles.filter(f=>!f.type.startsWith('image/'));
+  w.innerHTML=
+    (imgs.length?`<div class="attach-grid" style="margin-bottom:${files.length?'8px':'0'}">${imgs.map(f=>`
+      <div class="attach-thumb">
+        <img src="${f.dataUrl}" alt="${esc(f.name)}">
+        <button class="attach-del" onclick="removePending('${f.id}')">×</button>
+      </div>`).join('')}</div>`:'') +
+    files.map(f=>`<div class="attach-file">
+      <span class="attach-file-icon">${fileIcon(f.type)}</span>
+      <span class="attach-file-name">${esc(f.name)}</span>
+      <span class="attach-file-size">${fmtSize(f.size)}</span>
+      <button class="attach-file-del" onclick="removePending('${f.id}')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+function removePending(id){pendingFiles=pendingFiles.filter(f=>f.id!==id);renderAttachPreview()}
+
+/* ── 添付画像の自動圧縮 ──
+   localStorage保存(数MB上限)前提のため、大きい写真は長辺1400pxのJPEGに縮小して保存する。
+   GIF(アニメ)とSVGは変換で壊れるため対象外。圧縮して逆に大きくなった場合も元のまま */
+const IMG_MAX_DIM=1400,IMG_QUALITY=0.82,IMG_COMPRESS_MIN_BYTES=300*1024;
+function readFileAsDataUrl(file){
+  return new Promise(res=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.readAsDataURL(file)});
+}
+function dataUrlBytes(dataUrl){const b64=dataUrl.split(',')[1]||'';return Math.floor(b64.length*3/4)}
+function compressImageFile(file){
+  return new Promise(res=>{
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=()=>{
+      let out=null;
+      try{
+        const scale=Math.min(1,IMG_MAX_DIM/Math.max(img.naturalWidth,img.naturalHeight));
+        const w=Math.max(1,Math.round(img.naturalWidth*scale)),h=Math.max(1,Math.round(img.naturalHeight*scale));
+        const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+        cv.getContext('2d').drawImage(img,0,0,w,h);
+        out=cv.toDataURL('image/jpeg',IMG_QUALITY);
+      }catch(e){out=null}
+      URL.revokeObjectURL(url);
+      res(out);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);res(null)};
+    img.src=url;
+  });
+}
+async function processAttachFile(file){
+  const id='att_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+  const isCompressible=file.type.startsWith('image/')&&file.type!=='image/gif'&&file.type!=='image/svg+xml';
+  if(isCompressible&&file.size>IMG_COMPRESS_MIN_BYTES){
+    const compressed=await compressImageFile(file);
+    if(compressed&&dataUrlBytes(compressed)<file.size){
+      return{id,name:file.name.replace(/\.[^.]+$/,'')+'.jpg',size:dataUrlBytes(compressed),type:'image/jpeg',dataUrl:compressed};
+    }
+  }
+  return{id,name:file.name,size:file.size,type:file.type,dataUrl:await readFileAsDataUrl(file)};
+}
+function readFilesAsBase64(files){
+  return Promise.all([...files].map(processAttachFile));
+}
+
+async function onSelectFiles(input){
+  const newFiles=await readFilesAsBase64(input.files);
+  pendingFiles=[...pendingFiles,...newFiles];
+  renderAttachPreview();
+  input.value='';
+}
+
+async function onDropFiles(e){
+  e.preventDefault();
+  document.getElementById('attachDrop').classList.remove('drag-over');
+  const newFiles=await readFilesAsBase64(e.dataTransfer.files);
+  pendingFiles=[...pendingFiles,...newFiles];
+  renderAttachPreview();
+}
+
+function refreshTagSelect(current){
+  document.getElementById('f-tag').innerHTML='<option value="">なし</option>'+tags.map(t=>`<option value="${esc(t.name)}" ${current===t.name?'selected':''}>${esc(t.name)}</option>`).join('');
+}
+
+function openAddModal(){
+  editingId=null;pendingFiles=[];
+  document.getElementById('modalTitle').textContent='新規顧客登録';
+  ['name','kana','phone','email','address','memo','zip'].forEach(f=>document.getElementById('f-'+f).value='');
+  document.getElementById('zipStatus').textContent='';
+  refreshTagSelect('');renderCustomFieldsForm(null);renderAttachPreview();
+  document.getElementById('addModal').classList.add('open');
+}
+
+function openEditModal(id){
+  closeModal('detailOverlay');
+  const c=customers.find(x=>x.id===id);if(!c)return;
+  editingId=id;pendingFiles=[];
+  document.getElementById('modalTitle').textContent='顧客情報の編集';
+  document.getElementById('f-name').value=c.name||'';
+  document.getElementById('f-kana').value=c.kana||'';
+  document.getElementById('f-phone').value=c.phone||'';
+  document.getElementById('f-email').value=c.email||'';
+  document.getElementById('f-zip').value=c.zip||'';
+  document.getElementById('f-address').value=c.address||'';
+  document.getElementById('f-memo').value=c.memo||'';
+  document.getElementById('zipStatus').textContent='';
+  refreshTagSelect(c.tag||'');
+  renderCustomFieldsForm(c.customData||{});
+  renderAttachPreview();
+  document.getElementById('addModal').classList.add('open');
+}
+
+function saveCustomer(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){showToast('氏名を入力してください');return}
+  const customData={};
+  customFields.forEach(f=>{const v=document.getElementById('cf-'+f.id);if(v)customData[f.id]=v.value.trim()});
+  const data={name,kana:document.getElementById('f-kana').value.trim(),phone:document.getElementById('f-phone').value.trim(),email:document.getElementById('f-email').value.trim(),tag:document.getElementById('f-tag').value,zip:document.getElementById('f-zip').value.trim(),address:document.getElementById('f-address').value.trim(),memo:document.getElementById('f-memo').value.trim(),customData};
+  let msg;
+  if(editingId){
+    const idx=customers.findIndex(c=>c.id===editingId);
+    const existing=customers[idx].attachments||[];
+    customers[idx]={...customers[idx],...data,attachments:[...existing,...pendingFiles]};
+    msg='更新しました';
+  }else{
+    data.id=Date.now().toString();data.createdAt=new Date().toISOString();data.attachments=[...pendingFiles];
+    customers.unshift(data);msg='登録しました';
+  }
+  // 保存に失敗したらモーダルを開いたままにして入力内容を守る
+  if(saveData()){showToast(msg);closeModal('addModal')}
+  renderTagFilters();renderList();
+}
+
+/* lightbox */
+function openLightbox(src){document.getElementById('lightboxImg').src=src;document.getElementById('lightbox').classList.add('open')}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open');document.getElementById('lightboxImg').src=''}
+
+/* settings */
+function openSettings(){
+  switchTab('tags');renderTagManageList();renderColorPicker();renderFieldManageList();
+  document.getElementById('settingsModal').classList.add('open');
+}
+function switchTab(tab){
+  ['tags','fields','data'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
+    document.getElementById('pane-'+t).style.display=t===tab?'':'none';
+  });
+  if(tab==='data')renderDeleteCustomerSelect();
+}
+function renderDeleteCustomerSelect(){
+  const sel=document.getElementById('delCustomerSelect');
+  if(!sel)return;
+  const sorted=[...customers].sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+  sel.innerHTML=`<option value="">削除する顧客を選択…</option>`+sorted.map(c=>`<option value="${c.id}">${esc(c.name)}${c.kana?`（${esc(c.kana)}）`:''}</option>`).join('');
+}
+function deleteCustomerFromSettings(){
+  const sel=document.getElementById('delCustomerSelect');
+  const id=sel.value;
+  if(!id){showToast('削除する顧客を選んでください');return}
+  const c=customers.find(x=>x.id===id);
+  if(!c)return;
+  if(!confirm(`「${c.name}」さんを削除しますか？\n\n履歴・添付ファイルも含めて完全に削除され、元に戻せません。`))return;
+  customers=customers.filter(x=>x.id!==id);
+  saveData();
+  renderTagFilters();
+  renderList();
+  renderDeleteCustomerSelect();
+  showToast(`「${c.name}」さんを削除しました`);
+}
+function renderColorPicker(){
+  document.getElementById('colorPicker').innerHTML=TAG_COLORS.map((c,i)=>`<div class="color-dot ${i===selectedColorIdx?'selected':''}" style="background:${c.dot}" onclick="selectColor(${i})"></div>`).join('');
+}
+function selectColor(i){selectedColorIdx=i;renderColorPicker()}
+function renderTagManageList(){
+  const w=document.getElementById('tagManageList');
+  if(!tags.length){w.innerHTML=`<p style="font-size:13px;color:var(--text3);text-align:center;padding:12px 0">タグがありません</p>`;return}
+  w.innerHTML=tags.map((t,i)=>{const c=TAG_COLORS[t.colorIdx],count=customers.filter(cu=>cu.tag===t.name).length;return`<div class="tag-manage-row"><div class="tag-swatch" style="background:${c.dot}"></div><span class="tag-manage-name">${esc(t.name)}</span><span class="tag-manage-count">${count}件</span><button class="btn-sm-del" onclick="removeTag(${i})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button></div>`}).join('');
+}
+function addTag(){
+  const name=document.getElementById('newTagName').value.trim();
+  if(!name){showToast('タグ名を入力してください');return}
+  if(tags.find(t=>t.name===name)){showToast('同じ名前のタグがあります');return}
+  tags.push({name,colorIdx:selectedColorIdx});saveTags();document.getElementById('newTagName').value='';
+  renderTagManageList();renderTagFilters();renderList();showToast(`「${name}」を追加しました`);
+}
+function removeTag(i){
+  const name=tags[i].name,count=customers.filter(c=>c.tag===name).length;
+  if(!confirm(`「${name}」を削除しますか？${count?'\n（'+count+'件の顧客からタグが外れます）':''}`))return;
+  if(activeTag===name){activeTag=null;try{localStorage.setItem('crm_activeTag','')}catch(e){}}
+  tags.splice(i,1);saveTags();renderTagManageList();renderTagFilters();renderList();showToast(`「${name}」を削除しました`);
+}
+function renderFieldManageList(){
+  const w=document.getElementById('fieldManageList');
+  if(!customFields.length){w.innerHTML=`<p style="font-size:13px;color:var(--text3);text-align:center;padding:12px 0">追加した項目はまだありません</p>`;return}
+  w.innerHTML=customFields.map((f,i)=>`<div class="field-row"><span style="font-size:16px;flex-shrink:0">${FIELD_ICONS[f.type]||'📝'}</span><span class="field-row-name">${esc(f.name)}</span><span class="field-row-type">${FIELD_TYPE_LABELS[f.type]||f.type}</span><button class="btn-sm-del" onclick="removeField(${i})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button></div>`).join('');
+}
+function addField(){
+  const name=document.getElementById('newFieldName').value.trim();
+  if(!name){showToast('項目名を入力してください');return}
+  if(customFields.find(f=>f.name===name)){showToast('同じ名前の項目があります');return}
+  const type=document.getElementById('newFieldType').value,id='cf_'+Date.now();
+  customFields.push({id,name,type});saveFields();document.getElementById('newFieldName').value='';
+  renderFieldManageList();showToast(`「${name}」を追加しました`);
+}
+function removeField(i){
+  const name=customFields[i].name;
+  if(!confirm(`「${name}」を削除しますか？（入力済みデータも消えます）`))return;
+  customFields.splice(i,1);saveFields();renderFieldManageList();showToast(`「${name}」を削除しました`);
+}
+
+/* ── Contact History ── */
+const H_TYPES={
+  '✨ リソリューション': {dot:'#f3e8ff',icon:'✨',badge:'#faf5ff',badgeText:'#7e22ce'},
+  '📞 電話': {dot:'#dbeafe',icon:'📞',badge:'#eff6ff',badgeText:'#1d4ed8'},
+  '✉️ メール':{dot:'#d1fae5',icon:'✉️',badge:'#f0fdf4',badgeText:'#15803d'},
+  '🏢 施術': {dot:'#f3e8ff',icon:'🏢',badge:'#faf5ff',badgeText:'#7e22ce'},
+  '🏢 来店': {dot:'#f3e8ff',icon:'🏢',badge:'#faf5ff',badgeText:'#7e22ce'},
+  '📝 書類': {dot:'#fef9c3',icon:'📝',badge:'#fefce8',badgeText:'#a16207'},
+  '💬 その他':{dot:'#f1f0ec',icon:'💬',badge:'#f8f7f4',badgeText:'#5c5a55'},
+};
+
+function renderHistoryList(c){
+  const list=(c.history||[]).slice().reverse();
+  if(!list.length)return`<div class="history-empty">カルテ記録はまだありません</div>`;
+  return list.map((h,i)=>{
+    const style=H_TYPES[h.type]||H_TYPES['💬 その他'];
+    const isLast=i===list.length-1;
+    const typeOpts=Object.keys(H_TYPES).map(t=>`<option value="${t}" ${h.type===t?'selected':''}>${t}</option>`).join('');
+    const hAtts=h.attachments||[];
+    const hImgs=hAtts.filter(a=>a.type.startsWith('image/'));
+    const hFiles=hAtts.filter(a=>!a.type.startsWith('image/'));
+    const attsHTML=hAtts.length?`
+      ${hImgs.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;margin-top:8px">${hImgs.map(a=>`
+        <div class="attach-thumb" onclick="openLightbox(this.querySelector('img').src)" style="border-radius:10px">
+          <img src="${a.dataUrl}" alt="${esc(a.name)}">
+        </div>`).join('')}</div>`:''}
+      ${hFiles.map(a=>`
+        <div class="attach-file" style="margin-top:6px;margin-bottom:0;padding:8px 12px" data-url="${a.dataUrl}" data-name="${esc(a.name)}" onclick="downloadFile(this.dataset.url,this.dataset.name)">
+          <span class="attach-file-icon" style="font-size:17px">${fileIcon(a.type)}</span>
+          <span class="attach-file-name" style="font-size:12px">${esc(a.name)}</span>
+          <span class="attach-file-size">${fmtSize(a.size)}</span>
+        </div>`).join('')}`:'';
+    return`<div class="history-item" id="hitem-${h.id}">
+      ${!isLast?'<div class="history-line"></div>':''}
+      <div class="history-dot" style="background:${style.dot}">${style.icon}</div>
+      <div class="history-content">
+        <!-- 表示モード -->
+        <div id="hview-${h.id}">
+          <div class="history-header">
+            <span style="font-size:13px;font-weight:700;color:var(--text1)">${formatDateTime(h.date)}</span>
+            <span class="history-type-badge" style="background:${style.badge};color:${style.badgeText}">${h.type}</span>
+            ${h.staff?`<span style="font-size:11px;color:var(--text2);background:var(--surface2);padding:2px 9px;border-radius:980px;font-weight:500">👤 ${esc(h.staff)}</span>`:''}
+            ${hAtts.length?`<span style="font-size:11px;color:var(--accent);font-weight:600">📎${hAtts.length}</span>`:''}
+            ${h.edited?`<span style="color:var(--text3);font-size:10px">編集済み</span>`:''}
+            <div style="display:flex;gap:4px;margin-left:auto">
+              <button class="history-del-btn" onclick="startHistoryEdit('${c.id}','${h.id}')" title="編集" style="color:var(--accent)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="history-del-btn" onclick="deleteHistory('${c.id}','${h.id}')" title="削除">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="history-text">${esc(h.text)}</div>
+          ${attsHTML}
+        </div>
+        <!-- 編集モード（初期非表示）-->
+        <div id="hedit-${h.id}" style="display:none">
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <select class="history-textarea" id="hetype-${h.id}" style="min-height:unset;height:38px;padding:6px 10px;font-size:13px;flex:1">${typeOpts}</select>
+            <input class="history-textarea" id="hestaff-${h.id}" list="staffList" placeholder="担当者" value="${esc(h.staff||'')}" style="min-height:unset;height:38px;padding:8px 12px;flex:1;max-width:140px">
+          </div>
+          <textarea class="history-textarea" id="heta-${h.id}" style="min-height:80px">${esc(h.text)}</textarea>
+          <div id="heatt-${h.id}" style="margin-top:8px">${renderHistEditAtts(c.id,h)}</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+            <button class="htype-btn" onclick="document.getElementById('hefile-${h.id}').click()" style="height:36px" title="契約書などを添付">📎 ファイルを追加</button>
+            <input type="file" id="hefile-${h.id}" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none" onchange="onHistEditFiles(this,'${c.id}','${h.id}')">
+            <div style="display:flex;gap:8px;margin-left:auto">
+              <button class="dfield-cancel-btn" onclick="cancelHistoryEdit('${h.id}')">キャンセル</button>
+              <button class="dfield-save-btn" onclick="saveHistoryEdit('${c.id}','${h.id}')">保存</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getStaffNames(){
+  const names=new Set();
+  customers.forEach(c=>(c.history||[]).forEach(h=>{if(h.staff)names.add(h.staff)}));
+  return[...names];
+}
+
+let pendingHistFiles=[];
+async function onHistFiles(input,customerId){
+  const newFiles=await readFilesAsBase64(input.files);
+  pendingHistFiles=[...pendingHistFiles,...newFiles];
+  const badge=document.getElementById(`hfilecount-${customerId}`);
+  if(badge)badge.textContent=pendingHistFiles.length?`(${pendingHistFiles.length})`:'';
+  input.value='';
+  showToast(`${newFiles.length}件を添付準備しました`);
+}
+
+let histEditAtts={}; // { histId: [attachments...] } 編集中の作業用コピー
+
+function startHistoryEdit(customerId,histId){
+  const c=customers.find(x=>x.id===customerId);
+  const h=(c?.history||[]).find(x=>x.id===histId);
+  histEditAtts[histId]=(h?.attachments||[]).map(a=>({...a}));
+  document.getElementById(`hview-${histId}`).style.display='none';
+  document.getElementById(`hedit-${histId}`).style.display='block';
+  const box=document.getElementById(`heatt-${histId}`);
+  if(box)box.innerHTML=renderHistEditAtts(customerId,h);
+  document.getElementById(`heta-${histId}`).focus();
+}
+
+function cancelHistoryEdit(histId){
+  delete histEditAtts[histId];
+  document.getElementById(`hview-${histId}`).style.display='';
+  document.getElementById(`hedit-${histId}`).style.display='none';
+}
+
+// 編集モード内の添付リスト表示
+function renderHistEditAtts(customerId,h){
+  const list=histEditAtts[h.id]||h.attachments||[];
+  if(!list.length)return'';
+  return`<div style="display:flex;flex-direction:column;gap:6px;background:var(--surface2);border-radius:10px;padding:8px">${list.map(a=>`
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+      <span style="font-size:16px">${fileIcon(a.type)}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text1)">${esc(a.name||'')}</span>
+      <span style="color:var(--text3);font-size:11px">${fmtSize(a.size)}</span>
+      <button class="attach-file-del" onclick="removeHistEditAtt('${customerId}','${h.id}','${a.id}')" title="この添付を削除" style="flex:none">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>`).join('')}</div>`;
+}
+
+async function onHistEditFiles(input,customerId,histId){
+  const newFiles=await readFilesAsBase64(input.files);
+  if(!histEditAtts[histId])histEditAtts[histId]=[];
+  histEditAtts[histId]=[...histEditAtts[histId],...newFiles];
+  input.value='';
+  const c=customers.find(x=>x.id===customerId);
+  const h=(c?.history||[]).find(x=>x.id===histId);
+  const box=document.getElementById(`heatt-${histId}`);
+  if(box)box.innerHTML=renderHistEditAtts(customerId,h);
+  showToast(`${newFiles.length}件を追加準備しました`);
+}
+
+function removeHistEditAtt(customerId,histId,attId){
+  histEditAtts[histId]=(histEditAtts[histId]||[]).filter(a=>a.id!==attId);
+  const c=customers.find(x=>x.id===customerId);
+  const h=(c?.history||[]).find(x=>x.id===histId);
+  const box=document.getElementById(`heatt-${histId}`);
+  if(box)box.innerHTML=renderHistEditAtts(customerId,h);
+}
+
+function saveHistoryEdit(customerId,histId){
+  const newText=document.getElementById(`heta-${histId}`).value.trim();
+  const newType=document.getElementById(`hetype-${histId}`).value;
+  const newStaff=document.getElementById(`hestaff-${histId}`)?.value.trim()||'';
+  const newAtts=histEditAtts[histId]||[];
+  if(!newText&&!newAtts.length){showToast('内容の入力か添付が必要です');return}
+  const idx=customers.findIndex(c=>c.id===customerId);
+  if(idx<0)return;
+  const hIdx=customers[idx].history.findIndex(h=>h.id===histId);
+  if(hIdx<0)return;
+  customers[idx].history[hIdx].text=newText;
+  customers[idx].history[hIdx].type=newType;
+  customers[idx].history[hIdx].staff=newStaff;
+  customers[idx].history[hIdx].attachments=newAtts;
+  customers[idx].history[hIdx].edited=new Date().toISOString();
+  // 保存に失敗したら編集モードのまま残し、入力内容を守る
+  if(!saveData())return;
+  delete histEditAtts[histId];
+  document.getElementById(`hlist-${customerId}`).innerHTML=renderHistoryList(customers[idx]);
+  renderList();
+  showToast('カルテを更新しました');
+}
+
+function formatDateTime(iso){
+  const d=new Date(iso);
+  return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function selectHType(btn,id){
+  document.querySelectorAll(`#htypes-${id} .htype-btn`).forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function addHistory(customerId){
+  const ta=document.getElementById(`hta-${customerId}`);
+  const text=ta.value.trim();
+  if(!text){showToast('対応内容を入力してください');ta.focus();return}
+  const typeBtn=document.querySelector(`#htypes-${customerId} .htype-btn.selected`);
+  const type=typeBtn?typeBtn.textContent.trim():'💬 その他';
+  const staff=document.getElementById(`hstaff-${customerId}`)?.value.trim()||'';
+  const idx=customers.findIndex(c=>c.id===customerId);
+  if(idx<0)return;
+  if(!customers[idx].history)customers[idx].history=[];
+  customers[idx].history.push({id:'h_'+Date.now(),type,text,staff,attachments:[...pendingHistFiles],date:new Date().toISOString()});
+  // 保存に失敗したら入力欄をクリアせず残す
+  if(!saveData())return;
+  ta.value='';
+  pendingHistFiles=[];
+  const badge=document.getElementById(`hfilecount-${customerId}`);
+  if(badge)badge.textContent='';
+  document.getElementById(`hlist-${customerId}`).innerHTML=renderHistoryList(customers[idx]);
+  renderList();
+  showToast('カルテに記録しました');
+}
+
+function deleteHistory(customerId,histId){
+  if(!confirm('この履歴を削除しますか？'))return;
+  const idx=customers.findIndex(c=>c.id===customerId);
+  if(idx<0)return;
+  customers[idx].history=(customers[idx].history||[]).filter(h=>h.id!==histId);
+  saveData();
+  document.getElementById(`hlist-${customerId}`).innerHTML=renderHistoryList(customers[idx]);
+  showToast('削除しました');
+}
+
+/* ── Data Management ── */
+function exportBackup(){
+  const backup={version:1,exportedAt:new Date().toISOString(),customers,tags,customFields};
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const d=new Date();
+  a.href=url;
+  a.download=`顧客管理バックアップ_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('バックアップを保存しました');
+}
+
+function importBackup(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.customers||!Array.isArray(data.customers)){showToast('バックアップファイルの形式が正しくありません');return}
+      if(!confirm(`バックアップから復元しますか？\n\n・顧客 ${data.customers.length}件\n・タグ ${(data.tags||[]).length}件\n\n※現在のデータはすべて上書きされます`))return;
+      customers=data.customers;
+      tags=data.tags||tags;
+      customFields=data.customFields||customFields;
+      if(!saveData())return;
+      saveTags();saveFields();
+      renderTagFilters();renderList();
+      closeModal('settingsModal');
+      showToast('復元が完了しました');
+    }catch{showToast('ファイルの読み込みに失敗しました')}
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+function exportCSV(){
+  const cfCols=customFields.map(f=>f.name);
+  const header=['氏名','フリガナ','タグ','電話番号','メールアドレス','郵便番号','住所',...cfCols,'メモ','登録日','最終対応日'];
+  const esc=v=>{v=(v??'').toString();return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const rows=customers.map(c=>{
+    const cfVals=customFields.map(f=>(c.customData||{})[f.id]||'');
+    const lc=lastContactTime(c);
+    return[c.name,c.kana||'',c.tag||'',c.phone||'',c.email||'',c.zip||'',c.address||'',...cfVals,c.memo||'',formatDate(c.createdAt),lc?formatDate(new Date(lc).toISOString()):''].map(esc).join(',');
+  });
+  const csv='\ufeff'+[header.map(esc).join(','),...rows].join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const d=new Date();
+  a.href=url;
+  a.download=`顧客一覧_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSVを書き出しました');
+}
+
+/* ── Bulk Mail ── */
+function openMailModal(){
+  const sel=document.getElementById('mailTagSelect');
+  sel.innerHTML='<option value="">すべてのクライアント</option>'+tags.map(t=>`<option value="${esc(t.name)}">${esc(t.name)} のみ</option>`).join('');
+  document.getElementById('mailSubject').value='';
+  document.getElementById('mailBody').value='';
+  renderMailRecipients();
+  document.getElementById('mailModal').classList.add('open');
+}
+
+function getMailRecipients(){
+  const tag=document.getElementById('mailTagSelect').value;
+  let list=customers.filter(c=>c.email);
+  if(tag)list=list.filter(c=>c.tag===tag);
+  return list;
+}
+
+function renderMailRecipients(){
+  const list=getMailRecipients();
+  const tag=document.getElementById('mailTagSelect').value;
+  const total=tag?customers.filter(c=>c.tag===tag).length:customers.length;
+  const noEmail=total-list.length;
+  const info=document.getElementById('mailRecipientInfo');
+  if(!list.length){
+    info.innerHTML=`⚠️ メールアドレスが登録されているクライアントがいません`;
+    return;
+  }
+  const names=esc(list.slice(0,8).map(c=>c.name).join('、'));
+  info.innerHTML=`<strong style="color:var(--text1);font-size:15px">${list.length}名</strong> に送信できます${noEmail?`<span style="color:var(--text3)">（アドレス未登録 ${noEmail}名は除く）</span>`:''}<br><span style="color:var(--text3);font-size:12px">${names}${list.length>8?` 　ほか${list.length-8}名`:''}</span>`;
+}
+
+function launchMail(){
+  const list=getMailRecipients();
+  if(!list.length){showToast('送信できる宛先がありません');return}
+  const bcc=list.map(c=>c.email).join(',');
+  const subject=encodeURIComponent(document.getElementById('mailSubject').value);
+  const body=encodeURIComponent(document.getElementById('mailBody').value);
+  const url=`mailto:?bcc=${encodeURIComponent(bcc)}${subject?'&subject='+subject:''}${body?'&body='+body:''}`;
+  if(url.length>1900){
+    showToast('宛先が多いためアドレスをコピーしました。BCC欄に貼り付けてください');
+    copyMailAddrs();
+    return;
+  }
+  location.href=url;
+}
+
+function copyMailAddrs(){
+  const list=getMailRecipients();
+  if(!list.length){showToast('コピーできる宛先がありません');return}
+  const addrs=list.map(c=>c.email).join(', ');
+  navigator.clipboard.writeText(addrs).then(()=>{
+    showToast(`${list.length}名分のアドレスをコピーしました`);
+  }).catch(()=>{
+    prompt('以下をコピーしてください：',addrs);
+  });
+}
+
+/* ── Esc key: close top-most modal ── */
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  const lb=document.getElementById('lightbox');
+  if(lb.classList.contains('open')){closeLightbox();return}
+  for(const id of['mailModal','settingsModal','addModal','detailOverlay']){
+    const el=document.getElementById(id);
+    if(el&&el.classList.contains('open')){closeModal(id);return}
+  }
+});
+
+/* zip */
+function onZipInput(el){let v=el.value.replace(/[^\d]/g,'');if(v.length>3)v=v.slice(0,3)+'-'+v.slice(3,7);el.value=v;document.getElementById('zipStatus').textContent='';if(v.replace('-','').length===7)lookupZip()}
+async function lookupZip(){
+  const raw=document.getElementById('f-zip').value.replace(/[^\d]/g,'');
+  if(raw.length!==7){showToast('7桁の郵便番号を入力してください');return}
+  const btn=document.getElementById('zipBtn'),status=document.getElementById('zipStatus');
+  btn.textContent='検索中…';btn.disabled=true;status.textContent='';
+  try{
+    const res=await fetch('https://zipcloud.ibsnet.co.jp/api/search?zipcode='+raw),json=await res.json();
+    if(json.results?.length){const r=json.results[0];document.getElementById('f-address').value=r.address1+r.address2+r.address3;status.style.color='#15803d';status.textContent='✓ 自動入力しました'}
+    else{status.style.color='#dc2626';status.textContent='住所が見つかりません'}
+  }catch{status.style.color='#dc2626';status.textContent='通信エラー'}
+  btn.textContent='住所を検索';btn.disabled=false;
+}
+
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+function closeIfOverlay(e,id){if(e.target===document.getElementById(id))closeModal(id)}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+
+/* 前回の並び順・タグフィルタを復元してから初回描画 */
+(function restoreViewPrefs(){
+  const savedSort=localStorage.getItem('crm_sort');
+  if(savedSort&&['name','date','contact'].includes(savedSort))document.getElementById('sortSelect').value=savedSort;
+  const savedTag=localStorage.getItem('crm_activeTag');
+  if(savedTag&&tags.find(t=>t.name===savedTag))activeTag=savedTag;
+})();
+renderTagFilters();renderList();
+</script>
+</body>
+</html>
