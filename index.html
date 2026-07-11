@@ -340,7 +340,7 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 <div class="toolbar">
   <div class="search-wrap">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input class="search-input" id="searchInput" placeholder="名前・電話・住所・メモで検索…" oninput="onSearch()">
+    <input class="search-input" id="searchInput" placeholder="名前・電話・住所・メモ・リソNo.で検索…" oninput="onSearch()">
   </div>
   <select class="sort-btn" id="sortSelect" onchange="onSortChange()" style="cursor:pointer">
     <option value="name">名前順</option>
@@ -641,7 +641,7 @@ function saveFields(){localStorage.setItem('crm_fields',JSON.stringify(customFie
 function onSearch(){searchQuery=document.getElementById('searchInput').value;renderList()}
 function getFiltered(){
   let list=[...customers];
-  if(searchQuery){const q=searchQuery.toLowerCase();list=list.filter(c=>c.name.toLowerCase().includes(q)||(c.kana||'').toLowerCase().includes(q)||(c.phone||'').replace(/-/g,'').includes(q.replace(/-/g,''))||(c.address||'').toLowerCase().includes(q)||(c.email||'').toLowerCase().includes(q)||(c.memo||'').toLowerCase().includes(q))}
+  if(searchQuery){const q=searchQuery.toLowerCase();list=list.filter(c=>c.name.toLowerCase().includes(q)||(c.kana||'').toLowerCase().includes(q)||(c.phone||'').replace(/-/g,'').includes(q.replace(/-/g,''))||(c.address||'').toLowerCase().includes(q)||(c.email||'').toLowerCase().includes(q)||(c.memo||'').toLowerCase().includes(q)||(c.rezoRecords||[]).some(r=>(r.number||'').toLowerCase().includes(q)))}
   if(activeTag)list=list.filter(c=>c.tag===activeTag);
   const sort=document.getElementById('sortSelect').value;
   if(sort==='name')list.sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
@@ -709,7 +709,7 @@ function renderList(){
 
 /* detail */
 function openDetail(id){
-  pendingHistFiles=[];
+  pendingHistFiles=[];pendingRezoFiles=[];rezoEditAtts={};
   const c=customers.find(x=>x.id===id);if(!c)return;
   const [bg,fg]=getAvatarColor(c.name),ts=getTagStyle(c.tag);
   const atts=c.attachments||[];
@@ -813,11 +813,14 @@ function openDetail(id){
 /* ── リソリューション記録（専用の記録表。対応履歴とは独立して直接入力する） ── */
 function fmtRezoDate(d){return(d||'').slice(0,10).replace(/-/g,'/')}
 function todayYMD(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
-/* 'YYYY-MM-DD'をUTCでなくローカルの日付として解釈して経過日数を出す(UTC解釈だと朝9時前にマイナスになる) */
-function daysSinceYMD(ymd){
-  const[y,m,d]=(ymd||'').slice(0,10).split('-').map(Number);
-  if(!y||!m||!d)return 0;
-  return Math.max(0,Math.floor((Date.now()-new Date(y,m-1,d).getTime())/86400000));
+
+/* 記録内セルに添付(契約書など)を表示する。画像はライトボックス、その他はダウンロード */
+function rezoAttsHTML(atts){
+  if(!atts||!atts.length)return'';
+  return`<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px">${atts.map(a=>a.type.startsWith('image/')
+    ?`<div class="attach-file" style="margin:0;padding:5px 9px" data-url="${a.dataUrl}" onclick="openLightbox(this.dataset.url)"><span class="attach-file-icon" style="font-size:15px">🖼️</span><span class="attach-file-name" style="font-size:11px">${esc(a.name)}</span></div>`
+    :`<div class="attach-file" style="margin:0;padding:5px 9px" data-url="${a.dataUrl}" data-name="${esc(a.name)}" onclick="downloadFile(this.dataset.url,this.dataset.name)"><span class="attach-file-icon" style="font-size:15px">${fileIcon(a.type)}</span><span class="attach-file-name" style="font-size:11px">${esc(a.name)}</span><span class="attach-file-size">${fmtSize(a.size)}</span></div>`
+  ).join('')}</div>`;
 }
 
 function rezoSectionHTML(c){
@@ -826,7 +829,7 @@ function rezoSectionHTML(c){
   const trash=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
   const rows=recs.map(r=>`<tr id="rzrow-${r.id}">
     <td class="rezo-date">${fmtRezoDate(r.date)}</td>
-    <td>${esc(r.content)}</td>
+    <td>${esc(r.content)}${rezoAttsHTML(r.attachments)}</td>
     <td class="rezo-staff">${esc(r.staff||'')}</td>
     <td class="rezo-no">${esc(r.number||'')}</td>
     <td class="rezo-note">${esc(r.note||'')}</td>
@@ -835,21 +838,16 @@ function rezoSectionHTML(c){
       <button class="history-del-btn" title="削除" onclick="deleteRezoRecord('${c.id}','${r.id}')">${trash}</button>
     </td>
   </tr>`).join('');
+  const pendCount=pendingRezoFiles.length?`(${pendingRezoFiles.length})`:'';
   return`
     <div class="detail-section" id="rezo-${c.id}">
       <div class="detail-section-hd"><span class="detail-section-title">リソリューション内容</span></div>
       ${recs.length?`
       <div class="rezo-scroll" style="margin-top:8px">
         <table class="rezo-table">
-          <thead><tr><th>来店日</th><th>基本内容</th><th>担当</th><th>No.</th><th>備考</th><th></th></tr></thead>
+          <thead><tr><th>リソ日</th><th>基本内容</th><th>担当</th><th>No.</th><th>備考</th><th></th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
-      </div>
-      <div class="rezo-stats">
-        <span>回数 <strong>${recs.length}回</strong></span>
-        <span>初回 <strong>${fmtRezoDate(recs[recs.length-1].date)}</strong></span>
-        <span>最終 <strong>${fmtRezoDate(recs[0].date)}</strong></span>
-        <span>経過 <strong>${daysSinceYMD(recs[0].date)}日</strong></span>
       </div>`
       :`<div style="padding:6px 22px 0;font-size:13px;color:var(--text3)">記録はまだありません。下の欄から追加できます。</div>`}
       <div class="rezo-form">
@@ -859,9 +857,12 @@ function rezoSectionHTML(c){
           <input class="rezo-input" id="rz-staff-${c.id}" list="staffList" placeholder="担当" style="flex:1.1">
         </div>
         <input class="rezo-input" id="rz-content-${c.id}" placeholder="基本内容">
+        <input class="rezo-input" id="rz-note-${c.id}" placeholder="備考">
+        <div id="rzatt-${c.id}">${pendingRezoFiles.length?rezoAttsHTML(pendingRezoFiles):''}</div>
         <div class="rezo-form-row">
-          <input class="rezo-input" id="rz-note-${c.id}" placeholder="備考" style="flex:1">
-          <button class="btn-history-add" onclick="addRezoRecord('${c.id}')" style="flex:none;white-space:nowrap">＋ 記録する</button>
+          <button class="htype-btn" onclick="document.getElementById('rzfile-${c.id}').click()" style="height:38px;flex:1" title="契約書などを添付">📎 契約書を添付<span id="rzfilecount-${c.id}" style="margin-left:4px;color:var(--accent);font-weight:700">${pendCount}</span></button>
+          <input type="file" id="rzfile-${c.id}" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none" onchange="onRezoFiles(this,'${c.id}')">
+          <button class="btn-history-add" onclick="addRezoRecord('${c.id}')" style="flex:none;white-space:nowrap">＋ 追加</button>
         </div>
       </div>
     </div>`;
@@ -872,20 +873,64 @@ function refreshRezoSection(customerId){
   if(el&&c)el.outerHTML=rezoSectionHTML(c);
 }
 
+/* 追加フォームで選んだ契約書などの一時置き場（追加確定orキャンセルまで保持） */
+let pendingRezoFiles=[];
+async function onRezoFiles(input,customerId){
+  const newFiles=await readFilesAsBase64(input.files);
+  pendingRezoFiles=[...pendingRezoFiles,...newFiles];
+  input.value='';
+  const box=document.getElementById(`rzatt-${customerId}`);
+  if(box)box.innerHTML=rezoAttsHTML(pendingRezoFiles);
+  const badge=document.getElementById(`rzfilecount-${customerId}`);
+  if(badge)badge.textContent=pendingRezoFiles.length?`(${pendingRezoFiles.length})`:'';
+  showToast(`${newFiles.length}件を添付準備しました`);
+}
+
 function addRezoRecord(customerId){
   const g=k=>document.getElementById(`rz-${k}-${customerId}`);
   const date=g('date').value,content=g('content').value.trim();
-  if(!date){showToast('来店日を入力してください');return}
+  if(!date){showToast('リソ日を入力してください');return}
   if(!content){showToast('基本内容を入力してください');g('content').focus();return}
   const idx=customers.findIndex(c=>c.id===customerId);
   if(idx<0)return;
   if(!customers[idx].rezoRecords)customers[idx].rezoRecords=[];
-  customers[idx].rezoRecords.push({id:'rz_'+Date.now(),date,content,staff:g('staff').value.trim(),number:g('number').value.trim(),note:g('note').value.trim()});
-  // 保存に失敗したら入力欄を残す
+  customers[idx].rezoRecords.push({id:'rz_'+Date.now(),date,content,staff:g('staff').value.trim(),number:g('number').value.trim(),note:g('note').value.trim(),attachments:[...pendingRezoFiles]});
+  // 保存に失敗したら入力欄と添付準備を残す
   if(!saveData())return;
+  pendingRezoFiles=[];
   refreshRezoSection(customerId);
   renderList();
   showToast('リソリューション内容を追加しました');
+}
+
+/* 編集中の添付の作業用コピー { recId: [attachments...] } */
+let rezoEditAtts={};
+function renderRezoEditAtts(recId){
+  const list=rezoEditAtts[recId]||[];
+  if(!list.length)return'';
+  return`<div style="display:flex;flex-direction:column;gap:6px;background:var(--surface2);border-radius:10px;padding:8px">${list.map(a=>`
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+      <span style="font-size:16px">${fileIcon(a.type)}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text1)">${esc(a.name||'')}</span>
+      <span style="color:var(--text3);font-size:11px">${fmtSize(a.size)}</span>
+      <button class="attach-file-del" onclick="removeRezoEditAtt('${recId}','${a.id}')" title="この添付を削除" style="flex:none">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>`).join('')}</div>`;
+}
+async function onRezoEditFiles(input,recId){
+  const newFiles=await readFilesAsBase64(input.files);
+  if(!rezoEditAtts[recId])rezoEditAtts[recId]=[];
+  rezoEditAtts[recId]=[...rezoEditAtts[recId],...newFiles];
+  input.value='';
+  const box=document.getElementById(`rzeatt-${recId}`);
+  if(box)box.innerHTML=renderRezoEditAtts(recId);
+  showToast(`${newFiles.length}件を追加準備しました`);
+}
+function removeRezoEditAtt(recId,attId){
+  rezoEditAtts[recId]=(rezoEditAtts[recId]||[]).filter(a=>a.id!==attId);
+  const box=document.getElementById(`rzeatt-${recId}`);
+  if(box)box.innerHTML=renderRezoEditAtts(recId);
 }
 
 function startRezoEdit(customerId,recId){
@@ -893,6 +938,7 @@ function startRezoEdit(customerId,recId){
   const r=(c?.rezoRecords||[]).find(x=>x.id===recId);
   const row=document.getElementById(`rzrow-${recId}`);
   if(!r||!row)return;
+  rezoEditAtts[recId]=(r.attachments||[]).map(a=>({...a}));
   row.innerHTML=`<td colspan="6" style="padding:10px 4px">
     <div class="rezo-form" style="padding:0">
       <div class="rezo-form-row">
@@ -902,7 +948,10 @@ function startRezoEdit(customerId,recId){
       </div>
       <input class="rezo-input" id="rze-content-${recId}" value="${esc(r.content||'')}" placeholder="基本内容">
       <input class="rezo-input" id="rze-note-${recId}" value="${esc(r.note||'')}" placeholder="備考">
-      <div class="rezo-form-row" style="justify-content:flex-end">
+      <div id="rzeatt-${recId}">${renderRezoEditAtts(recId)}</div>
+      <div class="rezo-form-row">
+        <button class="htype-btn" onclick="document.getElementById('rzefile-${recId}').click()" style="height:36px;flex:1" title="契約書などを添付">📎 契約書を追加</button>
+        <input type="file" id="rzefile-${recId}" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none" onchange="onRezoEditFiles(this,'${recId}')">
         <button class="dfield-cancel-btn" onclick="refreshRezoSection('${customerId}')">キャンセル</button>
         <button class="dfield-save-btn" onclick="saveRezoEdit('${customerId}','${recId}')">保存</button>
       </div>
@@ -918,11 +967,13 @@ function saveRezoEdit(customerId,recId){
   const r=(customers[idx].rezoRecords||[]).find(x=>x.id===recId);
   if(!r)return;
   const date=g('date').value,content=g('content').value.trim();
-  if(!date){showToast('来店日を入力してください');return}
+  if(!date){showToast('リソ日を入力してください');return}
   if(!content){showToast('基本内容を入力してください');g('content').focus();return}
   r.date=date;r.content=content;r.staff=g('staff').value.trim();r.number=g('number').value.trim();r.note=g('note').value.trim();
+  r.attachments=rezoEditAtts[recId]||[];
   // 保存に失敗したら編集モードのまま残す(saveData内でデータは保存済みの状態に巻き戻る)
   if(!saveData())return;
+  delete rezoEditAtts[recId];
   refreshRezoSection(customerId);
   renderList();
   showToast('リソリューション内容を更新しました');
