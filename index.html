@@ -198,7 +198,7 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 /* リソリューション記録の一覧表 */
 .rezo-scroll{max-height:300px;overflow-y:auto;overflow-x:auto;padding:0 14px}
 .rezo-table{width:100%;min-width:560px;border-collapse:collapse;font-size:15px;table-layout:auto}
-.rezo-table th{text-align:left;font-weight:600;color:var(--text3);font-size:13px;padding:7px 9px;border-bottom:1px solid var(--surface3);white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1}
+.rezo-table th{text-align:left;font-weight:600;color:var(--text2);font-size:15px;padding:8px 9px;border-bottom:1px solid var(--surface3);white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1}
 .rezo-table td{padding:10px 9px;border-bottom:1px solid var(--surface2);vertical-align:top;line-height:1.6;color:var(--text1);word-break:break-word;overflow-wrap:anywhere}
 .rezo-table tr:last-child td{border-bottom:none}
 .rezo-date{white-space:nowrap;color:var(--text2);font-weight:500}
@@ -788,16 +788,14 @@ function openDetail(id){
                 ${H_TYPES_SELECTABLE.map((t,i)=>`<button class="htype-btn${i===0?' selected':''}" onclick="selectHType(this,'${id}')">${t}</button>`).join('')}
               </div>
               <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
-                <input class="history-textarea" id="hstaff-${id}" list="staffList" placeholder="担当者" style="min-height:unset;height:38px;padding:8px 14px;flex:1;max-width:160px">
+                <input class="history-textarea" id="hstaff-${id}" list="staffList" placeholder="担当者" style="min-height:unset;height:38px;padding:8px 14px;flex:1;max-width:200px">
                 <datalist id="staffList">${getStaffNames().map(s=>`<option value="${esc(s)}">`).join('')}</datalist>
-                <button class="htype-btn" onclick="document.getElementById('hfile-${id}').click()" style="height:38px" title="契約書などを添付">📎 契約書を添付<span id="hfilecount-${id}" style="margin-left:4px;color:var(--accent);font-weight:700"></span></button>
-                <input type="file" id="hfile-${id}" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none" onchange="onHistFiles(this,'${id}')">
               </div>
               <textarea class="history-textarea" id="hta-${id}" placeholder="対応内容を入力…（Ctrl+Enterで追加）" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')addHistory('${id}')"></textarea>
               <div class="history-add-actions">
                 <button class="btn-history-add" onclick="addHistory('${id}')">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:3px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  カルテに記録
+                  追加
                 </button>
               </div>
             </div>
