@@ -122,8 +122,8 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 
 /* 2-col grid */
 .detail-body{padding:24px 32px 8px;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
-.detail-col-left{display:flex;flex-direction:column;gap:16px}
-.detail-col-right{display:flex;flex-direction:column;gap:16px}
+.detail-col-left{display:flex;flex-direction:column;gap:16px;min-width:0}
+.detail-col-right{display:flex;flex-direction:column;gap:16px;min-width:0}
 
 /* section card: borderless */
 .detail-section{background:var(--surface);border-radius:var(--radius);overflow:hidden;border:none;box-shadow:var(--shadow-sm)}
@@ -196,15 +196,24 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 .detail-hint{font-size:12px;color:var(--text3);padding:0 4px 4px;letter-spacing:.01em;grid-column:1/-1}
 
 /* リソリューション記録の一覧表 */
-.rezo-scroll{max-height:280px;overflow-y:auto;padding:0 14px}
-.rezo-table{width:100%;border-collapse:collapse;font-size:12.5px}
-.rezo-table th{text-align:left;font-weight:600;color:var(--text3);font-size:11px;padding:6px 8px;border-bottom:1px solid var(--surface3);white-space:nowrap;position:sticky;top:0;background:var(--surface)}
+.rezo-scroll{max-height:300px;overflow-y:auto;overflow-x:auto;padding:0 14px}
+.rezo-table{width:100%;min-width:460px;border-collapse:collapse;font-size:12.5px}
+.rezo-table th{text-align:left;font-weight:600;color:var(--text3);font-size:11px;padding:6px 8px;border-bottom:1px solid var(--surface3);white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1}
 .rezo-table td{padding:8px;border-bottom:1px solid var(--surface2);vertical-align:top;line-height:1.55;color:var(--text1)}
 .rezo-table tr:last-child td{border-bottom:none}
 .rezo-date{white-space:nowrap;color:var(--text2);font-weight:500}
 .rezo-staff{white-space:nowrap;color:var(--text3)}
-.rezo-stats{display:flex;gap:6px 16px;flex-wrap:wrap;padding:12px 22px 16px;font-size:12px;color:var(--text3);border-top:1px solid var(--surface3);margin-top:6px}
+.rezo-no{white-space:nowrap;color:var(--text2)}
+.rezo-note{color:var(--text3)}
+.rezo-acts{white-space:nowrap;text-align:right}
+.rezo-acts .history-del-btn{display:inline-flex;vertical-align:middle}
+.rezo-stats{display:flex;gap:6px 16px;flex-wrap:wrap;padding:12px 22px 4px;font-size:12px;color:var(--text3);border-top:1px solid var(--surface3);margin-top:6px}
 .rezo-stats strong{color:var(--text1);font-weight:600}
+/* リソリューション記録の追加・編集フォーム */
+.rezo-form{display:flex;flex-direction:column;gap:8px;padding:12px 22px 18px}
+.rezo-form-row{display:flex;gap:8px;align-items:center}
+.rezo-input{border:none;border-radius:10px;background:var(--surface2);padding:9px 12px;font-size:13px;font-family:inherit;color:var(--text1);outline:none;transition:box-shadow .15s;min-width:0;width:100%}
+.rezo-input:focus{box-shadow:0 0 0 3px rgba(0,113,227,.18);background:#fff}
 
 /* attach (form) */
 .attach-drop{border:1.5px dashed var(--border2);border-radius:16px;padding:28px;text-align:center;cursor:pointer;transition:all .18s;margin-bottom:14px;background:transparent}
@@ -347,7 +356,7 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 <div class="modal-overlay" id="addModal" onclick="closeIfOverlay(event,'addModal')">
   <div class="modal-box">
     <div class="modal-header">
-      <span class="modal-title" id="modalTitle">新規顧客登録</span>
+      <span class="modal-title" id="modalTitle">新規登録</span>
       <button class="modal-close" onclick="closeModal('addModal')">×</button>
     </div>
     <div class="form-row">
@@ -591,6 +600,28 @@ if(_storedCustomers===null){
   if(changed)try{localStorage.setItem('crm_customers',JSON.stringify(customers))}catch(e){}
 })();
 
+/* ── リソリューション記録マイグレーション：対応履歴の「✨ リソリューション」を専用の記録表(rezoRecords)へ移す ──
+   ・変換後は履歴から削除する。ただし添付ファイル付きの履歴はデータ消失を防ぐため履歴側に残す
+   ・rz_+履歴id の固定IDで重複変換を防ぐ（残した添付付き履歴が次回起動時に二重登録されないように） */
+(function migrateRezoRecords(){
+  let changed=false;
+  customers.forEach(c=>{
+    const hist=c.history||[];
+    const rezos=hist.filter(h=>h.type==='✨ リソリューション');
+    if(!rezos.length)return;
+    if(!c.rezoRecords)c.rezoRecords=[];
+    rezos.forEach(h=>{
+      const rid='rz_'+h.id;
+      if(c.rezoRecords.some(r=>r.id===rid))return;
+      c.rezoRecords.push({id:rid,date:(h.date||'').slice(0,10),content:h.text||'',staff:h.staff||'',number:'',note:''});
+      changed=true;
+    });
+    const kept=hist.filter(h=>h.type!=='✨ リソリューション'||(h.attachments||[]).length);
+    if(kept.length!==hist.length){c.history=kept;changed=true;}
+  });
+  if(changed)try{localStorage.setItem('crm_customers',JSON.stringify(customers))}catch(e){}
+})();
+
 function saveData(){
   try{
     localStorage.setItem('crm_customers',JSON.stringify(customers));
@@ -620,9 +651,12 @@ function getFiltered(){
 }
 
 function lastContactTime(c){
-  const h=c.history||[];
-  if(!h.length)return 0;
-  return Math.max(...h.map(x=>new Date(x.date).getTime()));
+  // 対応履歴とリソリューション記録(来店日)の両方から最新の日時を取る
+  const times=[
+    ...(c.history||[]).map(x=>new Date(x.date).getTime()),
+    ...(c.rezoRecords||[]).map(r=>new Date(r.date).getTime())
+  ].filter(t=>!isNaN(t));
+  return times.length?Math.max(...times):0;
 }
 
 function lastContactLabel(c){
@@ -711,27 +745,18 @@ function openDetail(id){
       <div class="detail-body">
         <div class="detail-hint">✏️ 各項目をタップして直接編集できます</div>
 
-        <!-- 左カラム：基本情報 ＋ 連絡先 ＋ 追加項目 ＋ 登録情報 ＋ メモ ＋ 添付ファイル -->
+        <!-- 左カラム：基本情報（連絡先・登録情報も統合）＋ メモ ＋ リソリューション内容 -->
         <div class="detail-col-left">
           <div class="detail-section">
             <div class="detail-section-hd"><span class="detail-section-title">基本情報</span></div>
             ${dfieldHTML('name','氏名',esc(c.name),c.name,'text',id)}
             ${dfieldHTML('kana','フリガナ',esc(c.kana||''),c.kana||'','text',id)}
             ${dfieldHTML('tag','タグ',c.tag?`<span class="tag" style="background:${ts.bg};color:${ts.text}">${esc(c.tag)}</span>`:'',c.tag||'','tag',id)}
-          </div>
-
-          <div class="detail-section">
-            <div class="detail-section-hd"><span class="detail-section-title">連絡先</span></div>
             ${dfieldHTML('phone','電話番号',esc(c.phone||''),c.phone||'','tel',id)}
             ${dfieldHTML('email','メール',c.email?`<a href="mailto:${esc(c.email)}" style="color:var(--accent);text-decoration:none" onclick="event.stopPropagation()">${esc(c.email)}</a>`:'',c.email||'','email',id)}
             ${dfieldHTML('zip','郵便番号',esc(c.zip||''),c.zip||'','text',id)}
             ${dfieldHTML('address','住所',esc(c.address||''),c.address||'','text',id)}
-          </div>
-
-          ${customFields.length?`<div class="detail-section"><div class="detail-section-hd"><span class="detail-section-title">追加項目</span></div>${customRows}</div>`:''}
-
-          <div class="detail-section">
-            <div class="detail-section-hd"><span class="detail-section-title">登録情報</span></div>
+            ${customRows}
             <div class="dfield"><span class="dfield-label">登録日</span><span class="dfield-value">${formatDate(c.createdAt)}</span></div>
           </div>
 
@@ -758,7 +783,7 @@ function openDetail(id){
             <div class="detail-section-hd"><span class="detail-section-title">対応履歴</span></div>
             <div class="history-add-form">
               <div class="history-type-row" id="htypes-${id}">
-                ${['✨ リソリューション','📞 電話','✉️ メール','📝 書類','💬 その他'].map((t,i)=>`<button class="htype-btn${i===0?' selected':''}" onclick="selectHType(this,'${id}')">${t}</button>`).join('')}
+                ${H_TYPES_SELECTABLE.map((t,i)=>`<button class="htype-btn${i===0?' selected':''}" onclick="selectHType(this,'${id}')">${t}</button>`).join('')}
               </div>
               <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
                 <input class="history-textarea" id="hstaff-${id}" list="staffList" placeholder="担当者" style="min-height:unset;height:38px;padding:8px 14px;flex:1;max-width:160px">
@@ -785,36 +810,133 @@ function openDetail(id){
   document.getElementById('detailOverlay').classList.add('open');
 }
 
-/* リソリューション記録の一覧表（対応履歴のうち「✨ リソリューション」を抽出して表にする） */
+/* ── リソリューション記録（専用の記録表。対応履歴とは独立して直接入力する） ── */
+function fmtRezoDate(d){return(d||'').slice(0,10).replace(/-/g,'/')}
+function todayYMD(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+/* 'YYYY-MM-DD'をUTCでなくローカルの日付として解釈して経過日数を出す(UTC解釈だと朝9時前にマイナスになる) */
+function daysSinceYMD(ymd){
+  const[y,m,d]=(ymd||'').slice(0,10).split('-').map(Number);
+  if(!y||!m||!d)return 0;
+  return Math.max(0,Math.floor((Date.now()-new Date(y,m-1,d).getTime())/86400000));
+}
+
 function rezoSectionHTML(c){
-  const rezos=(c.history||[]).filter(h=>h.type==='✨ リソリューション').sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const recs=(c.rezoRecords||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const pencil=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  const trash=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+  const rows=recs.map(r=>`<tr id="rzrow-${r.id}">
+    <td class="rezo-date">${fmtRezoDate(r.date)}</td>
+    <td>${esc(r.content)}</td>
+    <td class="rezo-staff">${esc(r.staff||'')}</td>
+    <td class="rezo-no">${esc(r.number||'')}</td>
+    <td class="rezo-note">${esc(r.note||'')}</td>
+    <td class="rezo-acts">
+      <button class="history-del-btn" style="color:var(--accent)" title="編集" onclick="startRezoEdit('${c.id}','${r.id}')">${pencil}</button>
+      <button class="history-del-btn" title="削除" onclick="deleteRezoRecord('${c.id}','${r.id}')">${trash}</button>
+    </td>
+  </tr>`).join('');
   return`
     <div class="detail-section" id="rezo-${c.id}">
-      <div class="detail-section-hd"><span class="detail-section-title">✨ リソリューション記録</span></div>
-      ${rezos.length?`
+      <div class="detail-section-hd"><span class="detail-section-title">リソリューション内容</span></div>
+      ${recs.length?`
       <div class="rezo-scroll" style="margin-top:8px">
         <table class="rezo-table">
-          <thead><tr><th>日付</th><th>内容</th><th>担当</th></tr></thead>
-          <tbody>${rezos.map(h=>`<tr>
-            <td class="rezo-date">${formatDate(h.date)}</td>
-            <td>${esc(h.text)}</td>
-            <td class="rezo-staff">${esc(h.staff||'')}</td>
-          </tr>`).join('')}</tbody>
+          <thead><tr><th>来店日</th><th>基本内容</th><th>担当</th><th>No.</th><th>備考</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
         </table>
       </div>
       <div class="rezo-stats">
-        <span>回数 <strong>${rezos.length}回</strong></span>
-        <span>初回 <strong>${formatDate(rezos[rezos.length-1].date)}</strong></span>
-        <span>最終 <strong>${formatDate(rezos[0].date)}</strong></span>
-        <span>経過 <strong>${Math.floor((Date.now()-new Date(rezos[0].date))/86400000)}日</strong></span>
+        <span>回数 <strong>${recs.length}回</strong></span>
+        <span>初回 <strong>${fmtRezoDate(recs[recs.length-1].date)}</strong></span>
+        <span>最終 <strong>${fmtRezoDate(recs[0].date)}</strong></span>
+        <span>経過 <strong>${daysSinceYMD(recs[0].date)}日</strong></span>
       </div>`
-      :`<div style="padding:6px 22px 18px;font-size:13px;color:var(--text3)">記録はまだありません。対応履歴で「✨ リソリューション」を選んで記録すると、ここに一覧されます。</div>`}
+      :`<div style="padding:6px 22px 0;font-size:13px;color:var(--text3)">記録はまだありません。下の欄から追加できます。</div>`}
+      <div class="rezo-form">
+        <div class="rezo-form-row">
+          <input type="date" class="rezo-input" id="rz-date-${c.id}" value="${todayYMD()}" style="flex:1.5">
+          <input class="rezo-input" id="rz-number-${c.id}" placeholder="No." style="flex:.9">
+          <input class="rezo-input" id="rz-staff-${c.id}" list="staffList" placeholder="担当" style="flex:1.1">
+        </div>
+        <input class="rezo-input" id="rz-content-${c.id}" placeholder="基本内容">
+        <div class="rezo-form-row">
+          <input class="rezo-input" id="rz-note-${c.id}" placeholder="備考" style="flex:1">
+          <button class="btn-history-add" onclick="addRezoRecord('${c.id}')" style="flex:none;white-space:nowrap">＋ 記録する</button>
+        </div>
+      </div>
     </div>`;
 }
 function refreshRezoSection(customerId){
   const el=document.getElementById(`rezo-${customerId}`);
   const c=customers.find(x=>x.id===customerId);
   if(el&&c)el.outerHTML=rezoSectionHTML(c);
+}
+
+function addRezoRecord(customerId){
+  const g=k=>document.getElementById(`rz-${k}-${customerId}`);
+  const date=g('date').value,content=g('content').value.trim();
+  if(!date){showToast('来店日を入力してください');return}
+  if(!content){showToast('基本内容を入力してください');g('content').focus();return}
+  const idx=customers.findIndex(c=>c.id===customerId);
+  if(idx<0)return;
+  if(!customers[idx].rezoRecords)customers[idx].rezoRecords=[];
+  customers[idx].rezoRecords.push({id:'rz_'+Date.now(),date,content,staff:g('staff').value.trim(),number:g('number').value.trim(),note:g('note').value.trim()});
+  // 保存に失敗したら入力欄を残す
+  if(!saveData())return;
+  refreshRezoSection(customerId);
+  renderList();
+  showToast('リソリューション内容を追加しました');
+}
+
+function startRezoEdit(customerId,recId){
+  const c=customers.find(x=>x.id===customerId);
+  const r=(c?.rezoRecords||[]).find(x=>x.id===recId);
+  const row=document.getElementById(`rzrow-${recId}`);
+  if(!r||!row)return;
+  row.innerHTML=`<td colspan="6" style="padding:10px 4px">
+    <div class="rezo-form" style="padding:0">
+      <div class="rezo-form-row">
+        <input type="date" class="rezo-input" id="rze-date-${recId}" value="${esc((r.date||'').slice(0,10))}" style="flex:1.5">
+        <input class="rezo-input" id="rze-number-${recId}" value="${esc(r.number||'')}" placeholder="No." style="flex:.9">
+        <input class="rezo-input" id="rze-staff-${recId}" list="staffList" value="${esc(r.staff||'')}" placeholder="担当" style="flex:1.1">
+      </div>
+      <input class="rezo-input" id="rze-content-${recId}" value="${esc(r.content||'')}" placeholder="基本内容">
+      <input class="rezo-input" id="rze-note-${recId}" value="${esc(r.note||'')}" placeholder="備考">
+      <div class="rezo-form-row" style="justify-content:flex-end">
+        <button class="dfield-cancel-btn" onclick="refreshRezoSection('${customerId}')">キャンセル</button>
+        <button class="dfield-save-btn" onclick="saveRezoEdit('${customerId}','${recId}')">保存</button>
+      </div>
+    </div>
+  </td>`;
+  document.getElementById(`rze-content-${recId}`).focus();
+}
+
+function saveRezoEdit(customerId,recId){
+  const g=k=>document.getElementById(`rze-${k}-${recId}`);
+  const idx=customers.findIndex(c=>c.id===customerId);
+  if(idx<0)return;
+  const r=(customers[idx].rezoRecords||[]).find(x=>x.id===recId);
+  if(!r)return;
+  const date=g('date').value,content=g('content').value.trim();
+  if(!date){showToast('来店日を入力してください');return}
+  if(!content){showToast('基本内容を入力してください');g('content').focus();return}
+  r.date=date;r.content=content;r.staff=g('staff').value.trim();r.number=g('number').value.trim();r.note=g('note').value.trim();
+  // 保存に失敗したら編集モードのまま残す(saveData内でデータは保存済みの状態に巻き戻る)
+  if(!saveData())return;
+  refreshRezoSection(customerId);
+  renderList();
+  showToast('リソリューション内容を更新しました');
+}
+
+function deleteRezoRecord(customerId,recId){
+  if(!confirm('この記録を削除しますか？'))return;
+  const idx=customers.findIndex(c=>c.id===customerId);
+  if(idx<0)return;
+  customers[idx].rezoRecords=(customers[idx].rezoRecords||[]).filter(x=>x.id!==recId);
+  if(!saveData())return;
+  refreshRezoSection(customerId);
+  renderList();
+  showToast('削除しました');
 }
 
 function dfieldHTML(fieldKey,label,displayHTML,rawVal,type,customerId,cfId){
@@ -1012,7 +1134,7 @@ function refreshTagSelect(current){
 
 function openAddModal(){
   editingId=null;pendingFiles=[];
-  document.getElementById('modalTitle').textContent='新規顧客登録';
+  document.getElementById('modalTitle').textContent='新規登録';
   ['name','kana','phone','email','address','memo','zip'].forEach(f=>document.getElementById('f-'+f).value='');
   document.getElementById('zipStatus').textContent='';
   refreshTagSelect('');renderCustomFieldsForm(null);renderAttachPreview();
@@ -1137,6 +1259,9 @@ function removeField(i){
 }
 
 /* ── Contact History ── */
+/* 新規に選べる種別。リソリューションは専用の記録表へ移行したためここには含めない
+   (H_TYPES側の定義は過去データの表示互換のために残す) */
+const H_TYPES_SELECTABLE=['📞 電話','✉️ メール','📝 書類','💬 その他'];
 const H_TYPES={
   '✨ リソリューション': {dot:'#f3e8ff',icon:'✨',badge:'#faf5ff',badgeText:'#7e22ce'},
   '📞 電話': {dot:'#dbeafe',icon:'📞',badge:'#eff6ff',badgeText:'#1d4ed8'},
@@ -1153,7 +1278,8 @@ function renderHistoryList(c){
   return list.map((h,i)=>{
     const style=H_TYPES[h.type]||H_TYPES['💬 その他'];
     const isLast=i===list.length-1;
-    const typeOpts=Object.keys(H_TYPES).map(t=>`<option value="${t}" ${h.type===t?'selected':''}>${t}</option>`).join('');
+    // 編集時に選べる種別は現行のものだけ。ただし旧種別が付いた履歴は現状の値も選択肢に残す
+    const typeOpts=(H_TYPES_SELECTABLE.includes(h.type)?H_TYPES_SELECTABLE:[h.type,...H_TYPES_SELECTABLE]).map(t=>`<option value="${t}" ${h.type===t?'selected':''}>${t}</option>`).join('');
     const hAtts=h.attachments||[];
     const hImgs=hAtts.filter(a=>a.type.startsWith('image/'));
     const hFiles=hAtts.filter(a=>!a.type.startsWith('image/'));
@@ -1216,7 +1342,10 @@ function renderHistoryList(c){
 
 function getStaffNames(){
   const names=new Set();
-  customers.forEach(c=>(c.history||[]).forEach(h=>{if(h.staff)names.add(h.staff)}));
+  customers.forEach(c=>{
+    (c.history||[]).forEach(h=>{if(h.staff)names.add(h.staff)});
+    (c.rezoRecords||[]).forEach(r=>{if(r.staff)names.add(r.staff)});
+  });
   return[...names];
 }
 
@@ -1303,7 +1432,6 @@ function saveHistoryEdit(customerId,histId){
   if(!saveData())return;
   delete histEditAtts[histId];
   document.getElementById(`hlist-${customerId}`).innerHTML=renderHistoryList(customers[idx]);
-  refreshRezoSection(customerId);
   renderList();
   showToast('カルテを更新しました');
 }
@@ -1336,7 +1464,6 @@ function addHistory(customerId){
   const badge=document.getElementById(`hfilecount-${customerId}`);
   if(badge)badge.textContent='';
   document.getElementById(`hlist-${customerId}`).innerHTML=renderHistoryList(customers[idx]);
-  refreshRezoSection(customerId);
   renderList();
   showToast('カルテに記録しました');
 }
@@ -1348,7 +1475,6 @@ function deleteHistory(customerId,histId){
   customers[idx].history=(customers[idx].history||[]).filter(h=>h.id!==histId);
   saveData();
   document.getElementById(`hlist-${customerId}`).innerHTML=renderHistoryList(customers[idx]);
-  refreshRezoSection(customerId);
   showToast('削除しました');
 }
 
