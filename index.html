@@ -197,14 +197,18 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 
 /* リソリューション記録の一覧表 */
 .rezo-scroll{max-height:300px;overflow-y:auto;overflow-x:auto;padding:0 14px}
-.rezo-table{width:100%;min-width:460px;border-collapse:collapse;font-size:12.5px}
+.rezo-table{width:100%;min-width:540px;border-collapse:collapse;font-size:12.5px;table-layout:auto}
 .rezo-table th{text-align:left;font-weight:600;color:var(--text3);font-size:11px;padding:6px 8px;border-bottom:1px solid var(--surface3);white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1}
-.rezo-table td{padding:8px;border-bottom:1px solid var(--surface2);vertical-align:top;line-height:1.55;color:var(--text1)}
+.rezo-table td{padding:8px;border-bottom:1px solid var(--surface2);vertical-align:top;line-height:1.55;color:var(--text1);word-break:break-word;overflow-wrap:anywhere}
 .rezo-table tr:last-child td{border-bottom:none}
 .rezo-date{white-space:nowrap;color:var(--text2);font-weight:500}
 .rezo-staff{white-space:nowrap;color:var(--text3)}
 .rezo-no{white-space:nowrap;color:var(--text2)}
-.rezo-note{color:var(--text3)}
+/* 基本内容・備考は潰れないよう下限幅を確保（狭い時は表ごと横スクロール） */
+.rezo-content{min-width:180px}
+.rezo-note{color:var(--text3);min-width:130px}
+/* リソリューション内容セクションを詳細画面の横幅いっぱいに */
+.rezo-section-full{grid-column:1/-1;min-width:0}
 .rezo-acts{white-space:nowrap;text-align:right}
 .rezo-acts .history-del-btn{display:inline-flex;vertical-align:middle}
 .rezo-stats{display:flex;gap:6px 16px;flex-wrap:wrap;padding:12px 22px 4px;font-size:12px;color:var(--text3);border-top:1px solid var(--surface3);margin-top:6px}
@@ -745,7 +749,7 @@ function openDetail(id){
       <div class="detail-body">
         <div class="detail-hint">✏️ 各項目をタップして直接編集できます</div>
 
-        <!-- 左カラム：基本情報（連絡先・登録情報も統合）＋ メモ ＋ リソリューション内容 -->
+        <!-- 左カラム：基本情報（連絡先・登録情報も統合）＋ メモ -->
         <div class="detail-col-left">
           <div class="detail-section">
             <div class="detail-section-hd"><span class="detail-section-title">基本情報</span></div>
@@ -771,8 +775,6 @@ function openDetail(id){
               </div>
             </div>
           </div>
-
-          ${rezoHTML}
 
           ${attHTML}
         </div>
@@ -804,6 +806,9 @@ function openDetail(id){
             </div>
           </div>
         </div>
+
+        <!-- リソリューション内容：横幅いっぱい（下段） -->
+        ${rezoHTML}
       </div>
     </div>`;
 
@@ -829,7 +834,7 @@ function rezoSectionHTML(c){
   const trash=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
   const rows=recs.map(r=>`<tr id="rzrow-${r.id}">
     <td class="rezo-date">${fmtRezoDate(r.date)}</td>
-    <td>${esc(r.content)}${rezoAttsHTML(r.attachments)}</td>
+    <td class="rezo-content">${esc(r.content)}${rezoAttsHTML(r.attachments)}</td>
     <td class="rezo-staff">${esc(r.staff||'')}</td>
     <td class="rezo-no">${esc(r.number||'')}</td>
     <td class="rezo-note">${esc(r.note||'')}</td>
@@ -840,7 +845,7 @@ function rezoSectionHTML(c){
   </tr>`).join('');
   const pendCount=pendingRezoFiles.length?`(${pendingRezoFiles.length})`:'';
   return`
-    <div class="detail-section" id="rezo-${c.id}">
+    <div class="detail-section rezo-section-full" id="rezo-${c.id}">
       <div class="detail-section-hd"><span class="detail-section-title">リソリューション内容</span></div>
       ${recs.length?`
       <div class="rezo-scroll" style="margin-top:8px">
