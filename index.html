@@ -573,6 +573,80 @@ function fmtSize(b){return b<1024?b+'B':b<1048576?(b/1024).toFixed(0)+'KB':(b/10
 function fileIcon(type){if(type.startsWith('image/'))return'🖼️';if(type==='application/pdf')return'📄';if(type.includes('word'))return'📝';if(type.includes('sheet')||type.includes('excel'))return'📊';return'📎'}
 function esc(s){return(s??'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
+/* ── 添付ファイルの保管庫：IndexedDB ──
+   localStorageは容量が小さい(数MB)ため、添付(契約書・写真)の実データはIndexedDB(大容量)に保存する。
+   localStorageにはファイル名など軽い情報だけを残し、実データ(dataUrl)は起動時にメモリへ読み込んで使う。
+   → 表示・同期・バックアップの動きは従来と同じまま、localStorageの容量上限に当たらなくなる。
+   IndexedDBが使えない環境(プライベートモード等)では従来どおりlocalStorageに丸ごと保存する(idbOK=false)。 */
+const IDB_NAME='crm_files',IDB_STORE='blobs';
+let idbOK=false,_idb=null,appReady=false;
+function idbOpen(){
+  return new Promise((res,rej)=>{
+    if(_idb)return res(_idb);
+    let req;try{req=indexedDB.open(IDB_NAME,1)}catch(e){return rej(e)}
+    req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(IDB_STORE))db.createObjectStore(IDB_STORE)};
+    req.onsuccess=()=>{_idb=req.result;res(_idb)};
+    req.onerror=()=>rej(req.error);
+  });
+}
+function idbPut(id,dataUrl){return idbOpen().then(db=>new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).put(dataUrl,id);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)}))}
+function idbGet(id){return idbOpen().then(db=>new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readonly');const r=tx.objectStore(IDB_STORE).get(id);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
+function idbDel(id){return idbOpen().then(db=>new Promise(res=>{const tx=db.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).delete(id);tx.oncomplete=()=>res();tx.onerror=()=>res()})).catch(()=>{})}
+function idbAllKeys(){return idbOpen().then(db=>new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readonly');const r=tx.objectStore(IDB_STORE).getAllKeys();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)}))}
+
+/* 全顧客の添付を1件ずつ処理（顧客直下・対応履歴・リソリューション記録の3か所を巡回） */
+function eachAttachment(c,fn){
+  (c.attachments||[]).forEach(fn);
+  (c.history||[]).forEach(h=>(h.attachments||[]).forEach(fn));
+  (c.rezoRecords||[]).forEach(r=>(r.attachments||[]).forEach(fn));
+}
+/* localStorage保存用に、添付の実データ(dataUrl)を除いた軽いコピーを作る */
+function attMeta(a){return{id:a.id,name:a.name,size:a.size,type:a.type}}
+function customerForStorage(c){
+  const o={...c};
+  if(c.attachments)o.attachments=c.attachments.map(attMeta);
+  if(c.history)o.history=c.history.map(h=>h.attachments?{...h,attachments:h.attachments.map(attMeta)}:h);
+  if(c.rezoRecords)o.rezoRecords=c.rezoRecords.map(r=>r.attachments?{...r,attachments:r.attachments.map(attMeta)}:r);
+  return o;
+}
+/* メモリ上の全dataUrlをIndexedDBへ書き込む（クラウド取り込み・バックアップ復元時に使用） */
+async function persistAllBlobs(){
+  if(!idbOK)return;
+  const jobs=[];
+  customers.forEach(c=>eachAttachment(c,a=>{if(a.dataUrl)jobs.push(idbPut(a.id,a.dataUrl).catch(()=>{}))}));
+  await Promise.all(jobs);
+}
+/* 参照されていないIndexedDB内の添付(削除済み・追加キャンセル分)を掃除する */
+async function cleanupOrphanBlobs(){
+  if(!idbOK)return;
+  try{
+    const used=new Set();
+    customers.forEach(c=>eachAttachment(c,a=>used.add(a.id)));
+    const keys=await idbAllKeys();
+    await Promise.all(keys.filter(k=>!used.has(k)).map(k=>idbDel(k)));
+  }catch(e){}
+}
+/* 起動時：IndexedDBを開き、既存データを移行しつつ実データをメモリへ読み込む */
+async function hydrateAttachments(){
+  try{await idbOpen();idbOK=true}catch(e){idbOK=false}
+  if(!idbOK)return; // 従来どおりdataUrlはcustomers内(localStorage)にある
+  let migrated=false;
+  const jobs=[];
+  customers.forEach(c=>eachAttachment(c,a=>{
+    if(a.dataUrl){
+      // 旧形式：localStorage内にdataUrlがある → IndexedDBへ移す（メモリにはそのまま保持）
+      jobs.push(idbPut(a.id,a.dataUrl).catch(()=>{}));
+      migrated=true;
+    }else{
+      // 新形式：IndexedDBから実データを読み込んでメモリに載せる
+      jobs.push(idbGet(a.id).then(d=>{if(d)a.dataUrl=d}).catch(()=>{}));
+    }
+  }));
+  await Promise.all(jobs);
+  if(migrated)saveData(); // localStorageを軽い形式(dataUrl抜き)へ置き換える
+  await cleanupOrphanBlobs();
+}
+
 const _storedCustomers=localStorage.getItem('crm_customers');
 let customers=JSON.parse(_storedCustomers||'[]');
 let tags=JSON.parse(localStorage.getItem('crm_tags')||'null');
@@ -628,12 +702,15 @@ if(_storedCustomers===null){
 
 function saveData(){
   try{
-    localStorage.setItem('crm_customers',JSON.stringify(customers));
+    // idbOKなら添付の実データはIndexedDBにあるので、localStorageには軽い形式(dataUrl抜き)を保存
+    const payload=idbOK?customers.map(customerForStorage):customers;
+    localStorage.setItem('crm_customers',JSON.stringify(payload));
     scheduleSync();
     return true;
   }catch(e){
-    // 容量超過などで保存に失敗したら、メモリ上の変更を保存済みの状態に巻き戻す
-    customers=JSON.parse(localStorage.getItem('crm_customers')||'[]');
+    // 容量超過などで保存に失敗した場合。idbOK時はメモリ側にdataUrlを保持しているので巻き戻さない
+    // （localStorageは軽い形式のため、巻き戻すとメモリ上のdataUrlを失うため）
+    if(!idbOK)customers=JSON.parse(localStorage.getItem('crm_customers')||'[]');
     alert('⚠️ 保存できませんでした\n\n保存容量がいっぱいの可能性があります。今回の変更は保存されていません。\n\n設定 → データ管理でバックアップを保存したうえで、不要な添付ファイルや履歴を削除して容量を空けてください。');
     return false;
   }
@@ -1157,13 +1234,16 @@ function compressImageFile(file){
 async function processAttachFile(file){
   const id='att_'+Date.now()+'_'+Math.random().toString(36).slice(2);
   const isCompressible=file.type.startsWith('image/')&&file.type!=='image/gif'&&file.type!=='image/svg+xml';
+  let att;
   if(isCompressible&&file.size>IMG_COMPRESS_MIN_BYTES){
     const compressed=await compressImageFile(file);
-    if(compressed&&dataUrlBytes(compressed)<file.size){
-      return{id,name:file.name.replace(/\.[^.]+$/,'')+'.jpg',size:dataUrlBytes(compressed),type:'image/jpeg',dataUrl:compressed};
-    }
+    if(compressed&&dataUrlBytes(compressed)<file.size)
+      att={id,name:file.name.replace(/\.[^.]+$/,'')+'.jpg',size:dataUrlBytes(compressed),type:'image/jpeg',dataUrl:compressed};
   }
-  return{id,name:file.name,size:file.size,type:file.type,dataUrl:await readFileAsDataUrl(file)};
+  if(!att)att={id,name:file.name,size:file.size,type:file.type,dataUrl:await readFileAsDataUrl(file)};
+  // 実データをIndexedDBへ即保存（saveDataはメタ情報のみ保存するため。キャンセル分は起動時に掃除）
+  if(idbOK)try{await idbPut(att.id,att.dataUrl)}catch(e){}
+  return att;
 }
 function readFilesAsBase64(files){
   return Promise.all([...files].map(processAttachFile));
@@ -1564,7 +1644,7 @@ function importBackup(input){
   const file=input.files[0];
   if(!file)return;
   const reader=new FileReader();
-  reader.onload=e=>{
+  reader.onload=async e=>{
     try{
       const data=JSON.parse(e.target.result);
       if(!data.customers||!Array.isArray(data.customers)){showToast('バックアップファイルの形式が正しくありません');return}
@@ -1572,6 +1652,7 @@ function importBackup(input){
       customers=data.customers;
       tags=data.tags||tags;
       customFields=data.customFields||customFields;
+      await persistAllBlobs(); // 復元した添付の実データをIndexedDBへ
       if(!saveData())return;
       saveTags();saveFields();
       renderTagFilters();renderList();
@@ -1695,7 +1776,7 @@ async function syncUpload(gen){
     const remote=meta?await decryptPayload(await ghGetFileRaw(),syncCfg.pass):null;
     if(remote&&new Date(remote.exportedAt||0)>new Date(syncCfg.lastExportedAt||0)){
       if(confirm(`他の端末で保存された新しいデータが見つかりました（${formatDateTime(remote.exportedAt)} 保存）。\n\nOK：新しい方を取り込む（この端末の直近の変更は消えます）\nキャンセル：この端末の内容で上書きする`)){
-        applyRemote(remote,meta.sha);return;
+        await applyRemote(remote,meta.sha);return;
       }
     }
     finish(await ghPutFile(text,meta?meta.sha:undefined));
@@ -1720,15 +1801,16 @@ async function syncCheckRemote(force,manual){
       await syncUploadSafe();return;
     }
   }
-  applyRemote(remote,meta.sha);
+  await applyRemote(remote,meta.sha);
 }
 
 /* リモートのデータをこの端末に反映する */
-function applyRemote(remote,sha){
+async function applyRemote(remote,sha){
   applyingRemote=true;
   customers=remote.customers||[];
   tags=remote.tags||tags;
   customFields=remote.customFields||customFields;
+  await persistAllBlobs(); // クラウドから来た添付の実データをIndexedDBへ
   saveData();saveTags();saveFields();
   applyingRemote=false;
   syncCfg.lastSha=sha;syncCfg.lastExportedAt=remote.exportedAt;syncCfg.pending=false;syncCfg.lastSyncAt=new Date().toISOString();
@@ -1766,7 +1848,7 @@ async function setupSync(){
         resetSyncSetupBtn();return;
       }
       if(confirm(`クラウドに保存済みのデータが見つかりました。\n・顧客 ${(remote.customers||[]).length}件\n・保存日時 ${formatDateTime(remote.exportedAt)}\n\nOK：クラウドのデータをこの端末に取り込む（おすすめ）\nキャンセル：この端末のデータでクラウドを上書きする`)){
-        saveSyncCfg();applyRemote(remote,meta.sha);
+        saveSyncCfg();await applyRemote(remote,meta.sha);
       }else{
         if(!confirm('本当にこの端末の内容でクラウドを上書きしますか？\nクラウド側の以前のデータはこの端末の内容に置き換わります。')){
           syncCfg=null;resetSyncSetupBtn();return;
@@ -1838,15 +1920,16 @@ function renderSyncStatus(msg){
 }
 
 /* 起動時: 未送信の変更があれば送り、その後リモートの更新を確認 */
-(async function initSync(){
+/* クラウド同期の起動処理（ハイドレート後にinitAppから呼ぶ：不完全なデータを送らないため） */
+async function initSyncFlow(){
   if(!syncCfg)return;
   try{
     if(syncCfg.pending)await syncUploadSafe();
     await syncCheckRemote(true);
   }catch(e){console.warn('initial sync failed',e)}
-})();
+}
 document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible')syncCheckRemote().catch(()=>{});
+  if(appReady&&document.visibilityState==='visible')syncCheckRemote().catch(()=>{});
 });
 
 /* ── Bulk Mail ── */
@@ -1936,14 +2019,22 @@ function closeModal(id){document.getElementById(id).classList.remove('open')}
 function closeIfOverlay(e,id){if(e.target===document.getElementById(id))closeModal(id)}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 
-/* 前回の並び順・タグフィルタを復元してから初回描画 */
-(function restoreViewPrefs(){
+/* 前回の並び順・タグフィルタを復元 */
+function restoreViewPrefs(){
   const savedSort=localStorage.getItem('crm_sort');
   if(savedSort&&['name','date','contact'].includes(savedSort))document.getElementById('sortSelect').value=savedSort;
   const savedTag=localStorage.getItem('crm_activeTag');
   if(savedTag&&tags.find(t=>t.name===savedTag))activeTag=savedTag;
+}
+
+/* 起動：添付をIndexedDBから読み込んで(移行して)から描画・同期する */
+(async function initApp(){
+  await hydrateAttachments();
+  restoreViewPrefs();
+  renderTagFilters();renderList();
+  appReady=true;
+  await initSyncFlow();
 })();
-renderTagFilters();renderList();
 </script>
 </body>
 </html>
