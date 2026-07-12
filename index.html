@@ -498,9 +498,9 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
       <hr class="divider">
       <p style="font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600">🗑️ 顧客の削除</p>
       <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">削除した顧客は履歴・添付ファイルごと完全に消え、元に戻せません。念のため事前のバックアップ保存をおすすめします。</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <select id="delCustomerSelect" class="form-input" style="flex:1;min-width:180px;height:42px"></select>
-        <button class="btn-add" onclick="deleteCustomerFromSettings()" style="min-width:120px;background:var(--surface);color:#E30000;border:1.5px solid #E30000">この顧客を削除</button>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <select id="delCustomerSelect" class="form-input" style="width:100%;height:46px"></select>
+        <button class="btn-add" onclick="deleteCustomerFromSettings()" style="width:100%;background:var(--surface);color:#E30000;border:1.5px solid #E30000">この顧客を削除</button>
       </div>
       <hr class="divider">
       <p style="font-size:11px;color:var(--text3);line-height:1.7">💡 データはこのブラウザ内に保存されています。ブラウザの履歴・キャッシュを削除するとデータが消える場合があるため、<strong style="color:#c2410c">定期的なバックアップ保存をおすすめします</strong>。</p>
@@ -787,8 +787,10 @@ function openDetail(id){
               <div class="history-type-row" id="htypes-${id}">
                 ${H_TYPES_SELECTABLE.map((t,i)=>`<button class="htype-btn${i===0?' selected':''}" onclick="selectHType(this,'${id}')">${t}</button>`).join('')}
               </div>
-              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
-                <input class="history-textarea" id="hstaff-${id}" list="staffList" placeholder="担当者" style="min-height:unset;height:38px;padding:8px 14px;flex:1;max-width:200px">
+              <div style="font-size:12.5px;color:var(--text3);margin-bottom:5px">対応した日時（まとめて入力するときは変更してください）</div>
+              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap">
+                <input type="datetime-local" class="history-textarea" id="hdate-${id}" value="${nowLocalDT()}" style="min-height:unset;height:38px;padding:8px 12px;flex:1;min-width:180px" title="対応した日時">
+                <input class="history-textarea" id="hstaff-${id}" list="staffList" placeholder="担当者" style="min-height:unset;height:38px;padding:8px 14px;flex:1;min-width:120px;max-width:200px">
                 <datalist id="staffList">${getStaffNames().map(s=>`<option value="${esc(s)}">`).join('')}</datalist>
               </div>
               <textarea class="history-textarea" id="hta-${id}" placeholder="対応内容を入力…（Ctrl+Enterで追加）" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')addHistory('${id}')"></textarea>
@@ -848,7 +850,7 @@ function rezoSectionHTML(c){
       ${recs.length?`
       <div class="rezo-scroll" style="margin-top:8px">
         <table class="rezo-table">
-          <thead><tr><th>リソ日</th><th>基本内容</th><th>担当</th><th>No.</th><th>備考</th><th></th></tr></thead>
+          <thead><tr><th>リソ日</th><th>内容</th><th>担当</th><th>No.</th><th>備考</th><th></th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>`
@@ -859,7 +861,7 @@ function rezoSectionHTML(c){
           <input class="rezo-input" id="rz-number-${c.id}" placeholder="No." style="flex:.9">
           <input class="rezo-input" id="rz-staff-${c.id}" list="staffList" placeholder="担当" style="flex:1.1">
         </div>
-        <input class="rezo-input" id="rz-content-${c.id}" placeholder="基本内容">
+        <input class="rezo-input" id="rz-content-${c.id}" placeholder="内容">
         <input class="rezo-input" id="rz-note-${c.id}" placeholder="備考">
         <div id="rzatt-${c.id}">${pendingRezoFiles.length?rezoAttsHTML(pendingRezoFiles):''}</div>
         <div class="rezo-form-row">
@@ -893,7 +895,7 @@ function addRezoRecord(customerId){
   const g=k=>document.getElementById(`rz-${k}-${customerId}`);
   const date=g('date').value,content=g('content').value.trim();
   if(!date){showToast('リソ日を入力してください');return}
-  if(!content){showToast('基本内容を入力してください');g('content').focus();return}
+  if(!content){showToast('内容を入力してください');g('content').focus();return}
   const idx=customers.findIndex(c=>c.id===customerId);
   if(idx<0)return;
   if(!customers[idx].rezoRecords)customers[idx].rezoRecords=[];
@@ -949,7 +951,7 @@ function startRezoEdit(customerId,recId){
         <input class="rezo-input" id="rze-number-${recId}" value="${esc(r.number||'')}" placeholder="No." style="flex:.9">
         <input class="rezo-input" id="rze-staff-${recId}" list="staffList" value="${esc(r.staff||'')}" placeholder="担当" style="flex:1.1">
       </div>
-      <input class="rezo-input" id="rze-content-${recId}" value="${esc(r.content||'')}" placeholder="基本内容">
+      <input class="rezo-input" id="rze-content-${recId}" value="${esc(r.content||'')}" placeholder="内容">
       <input class="rezo-input" id="rze-note-${recId}" value="${esc(r.note||'')}" placeholder="備考">
       <div id="rzeatt-${recId}">${renderRezoEditAtts(recId)}</div>
       <div class="rezo-form-row">
@@ -971,7 +973,7 @@ function saveRezoEdit(customerId,recId){
   if(!r)return;
   const date=g('date').value,content=g('content').value.trim();
   if(!date){showToast('リソ日を入力してください');return}
-  if(!content){showToast('基本内容を入力してください');g('content').focus();return}
+  if(!content){showToast('内容を入力してください');g('content').focus();return}
   r.date=date;r.content=content;r.staff=g('staff').value.trim();r.number=g('number').value.trim();r.note=g('note').value.trim();
   r.attachments=rezoEditAtts[recId]||[];
   // 保存に失敗したら編集モードのまま残す(saveData内でデータは保存済みの状態に巻き戻る)
@@ -1327,7 +1329,8 @@ const H_TYPES={
 };
 
 function renderHistoryList(c){
-  const list=(c.history||[]).slice().reverse();
+  // 入力した順ではなく「対応日時」の新しい順に並べる（過去分をまとめて入力しても時系列で並ぶ）
+  const list=(c.history||[]).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
   if(!list.length)return`<div class="history-empty">カルテ記録はまだありません</div>`;
   return list.map((h,i)=>{
     const style=H_TYPES[h.type]||H_TYPES['💬 その他'];
@@ -1374,6 +1377,8 @@ function renderHistoryList(c){
         </div>
         <!-- 編集モード（初期非表示）-->
         <div id="hedit-${h.id}" style="display:none">
+          <div style="font-size:12.5px;color:var(--text3);margin-bottom:5px">対応した日時</div>
+          <input type="datetime-local" class="history-textarea" id="hedate-${h.id}" value="${isoToLocalDT(h.date)}" style="min-height:unset;height:38px;padding:8px 12px;width:100%;margin-bottom:8px" title="対応した日時">
           <div style="display:flex;gap:8px;margin-bottom:8px">
             <select class="history-textarea" id="hetype-${h.id}" style="min-height:unset;height:38px;padding:6px 10px;font-size:13px;flex:1">${typeOpts}</select>
             <input class="history-textarea" id="hestaff-${h.id}" list="staffList" placeholder="担当者" value="${esc(h.staff||'')}" style="min-height:unset;height:38px;padding:8px 12px;flex:1;max-width:140px">
@@ -1471,6 +1476,7 @@ function saveHistoryEdit(customerId,histId){
   const newText=document.getElementById(`heta-${histId}`).value.trim();
   const newType=document.getElementById(`hetype-${histId}`).value;
   const newStaff=document.getElementById(`hestaff-${histId}`)?.value.trim()||'';
+  const newDateISO=dtValueToISO(document.getElementById(`hedate-${histId}`)?.value);
   const newAtts=histEditAtts[histId]||[];
   if(!newText&&!newAtts.length){showToast('内容の入力か添付が必要です');return}
   const idx=customers.findIndex(c=>c.id===customerId);
@@ -1480,6 +1486,7 @@ function saveHistoryEdit(customerId,histId){
   customers[idx].history[hIdx].text=newText;
   customers[idx].history[hIdx].type=newType;
   customers[idx].history[hIdx].staff=newStaff;
+  customers[idx].history[hIdx].date=newDateISO;
   customers[idx].history[hIdx].attachments=newAtts;
   customers[idx].history[hIdx].edited=new Date().toISOString();
   // 保存に失敗したら編集モードのまま残し、入力内容を守る
@@ -1494,6 +1501,12 @@ function formatDateTime(iso){
   const d=new Date(iso);
   return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
+/* datetime-local用: 現在時刻 / ISO文字列 を "YYYY-MM-DDTHH:MM"(ローカル) に変換 */
+function localDT(d){const p=n=>String(n).padStart(2,'0');return`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`}
+function nowLocalDT(){return localDT(new Date())}
+function isoToLocalDT(iso){return localDT(new Date(iso))}
+/* datetime-localの値(ローカル解釈)をISOに。空なら現在時刻 */
+function dtValueToISO(v){return v?new Date(v).toISOString():new Date().toISOString()}
 
 function selectHType(btn,id){
   document.querySelectorAll(`#htypes-${id} .htype-btn`).forEach(b=>b.classList.remove('selected'));
@@ -1507,10 +1520,11 @@ function addHistory(customerId){
   const typeBtn=document.querySelector(`#htypes-${customerId} .htype-btn.selected`);
   const type=typeBtn?typeBtn.textContent.trim():'💬 その他';
   const staff=document.getElementById(`hstaff-${customerId}`)?.value.trim()||'';
+  const dateISO=dtValueToISO(document.getElementById(`hdate-${customerId}`)?.value);
   const idx=customers.findIndex(c=>c.id===customerId);
   if(idx<0)return;
   if(!customers[idx].history)customers[idx].history=[];
-  customers[idx].history.push({id:'h_'+Date.now(),type,text,staff,attachments:[...pendingHistFiles],date:new Date().toISOString()});
+  customers[idx].history.push({id:'h_'+Date.now(),type,text,staff,attachments:[...pendingHistFiles],date:dateISO});
   // 保存に失敗したら入力欄をクリアせず残す
   if(!saveData())return;
   ta.value='';
