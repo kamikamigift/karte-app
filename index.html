@@ -595,6 +595,12 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
       <div id="mailRecipientInfo" style="font-size:13px;color:var(--text2);background:var(--surface2);border-radius:12px;padding:12px 16px;line-height:1.7"></div>
     </div>
     <div class="form-field">
+      <label class="form-label">文例から入れる（任意）</label>
+      <select class="form-select" id="mailTemplate" onchange="applyMailTemplate()">
+        <option value="">選ぶと件名・本文に差し込みます</option>
+      </select>
+    </div>
+    <div class="form-field">
       <label class="form-label">件名（任意）</label>
       <input class="form-input" id="mailSubject" placeholder="例：夏季休業のお知らせ">
     </div>
@@ -603,12 +609,16 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
       <textarea class="form-textarea" id="mailBody" placeholder="メールソフトで編集もできます" style="min-height:120px"></textarea>
     </div>
     <div class="form-actions" style="flex-direction:column;gap:10px">
-      <button class="btn-save" style="flex:none;width:100%" onclick="launchMail()">
+      <button class="btn-save" style="flex:none;width:100%" onclick="launchGmail()">
+        📧 Gmailで開く（個別〜数十名向け）
+      </button>
+      <button class="btn-save" style="flex:none;width:100%;background:var(--surface2);color:var(--text1)" onclick="launchMail()">
         ✉️ メールソフトで作成する
       </button>
       <button class="btn-cancel" style="flex:none;width:100%" onclick="copyMailAddrs()">📋 宛先アドレスだけコピーする</button>
+      <button class="btn-cancel" style="flex:none;width:100%" onclick="exportMailCSV()">📤 配信用CSVを書き出す（配信サービス用）</button>
     </div>
-    <p style="font-size:11px;color:var(--text3);margin-top:14px;line-height:1.7">💡 宛先は<strong>BCC</strong>に入るため、お客様同士にアドレスは見えません。お使いのメールソフト（Gmail・Outlook等）が起動します。宛先が多い場合は数回に分けて送信してください。</p>
+    <p style="font-size:11px;color:var(--text3);margin-top:14px;line-height:1.7">💡 宛先は<strong>BCC</strong>に入るため、お客様同士にアドレスは見えません。<br>▸ <strong>数十名まで</strong>：Gmailで開く／メールソフトで作成。<br>▸ <strong>大人数の一斉配信</strong>：「配信用CSVを書き出す」でメール配信サービス（ブラストメール等）に取り込むのが安全です（Gmailには1日の送信上限があります）。</p>
   </div>
 </div>
 
@@ -2574,13 +2584,49 @@ document.addEventListener('visibilitychange',()=>{
 });
 
 /* ── Bulk Mail ── */
+// 個別メール用のあたたかい定型文（{name} は宛名に差し込む）
+const MAIL_TEMPLATES=[
+  {label:"お礼", subject:"先日はありがとうございました", body:"{name} 様\n\n先日は、お時間をつくってお越しいただきありがとうございました。\nお話しできて、私もあたたかい気持ちになりました。\nお手当てのあとは、どうか無理をなさらずゆっくりお過ごしくださいね。\n気になることがあれば、小さなことでもいつでもご連絡ください。\n\nシウン"},
+  {label:"ごぶさた", subject:"お変わりありませんか", body:"{name} 様\n\nしばらくご連絡が空いてしまいましたが、お元気でお過ごしでしょうか。\nふと{name}様のことを思い出して、メールを書いています。\n季節の変わり目、どうかご自愛ください。\n近況など、ひとことでもお聞かせいただけたら嬉しいです。\n\nシウン"},
+  {label:"暑中見舞い", subject:"暑中お見舞い申し上げます", body:"{name} 様\n\n暑中お見舞い申し上げます。\n今年の夏も、なかなかの暑さですね。\n冷たいお茶でも飲みながら、ほっとひと息つける時間がありますように。\n{name}様が穏やかな気持ちで夏を過ごせますよう、こちらから願っております。\n\nシウン"},
+  {label:"年末挨拶", subject:"今年もありがとうございました", body:"{name} 様\n\n今年も残すところ、あとわずかになりました。\n{name}様にとって、この一年はどんな年でしたでしょうか。\n一年のあいだご縁をいただけたこと、心から感謝しています。\nどうかあたたかくして、よいお年をお迎えください。\n\nシウン"},
+  {label:"様子うかがい", subject:"その後のご様子はいかがですか", body:"{name} 様\n\n先日のリソリューションから少し経ちましたが、その後お体やお気持ちに変化はありましたか。\nすっと軽くなる方もいれば、ゆっくり変わっていく方もいらっしゃいます。どちらも自然なことです。\n小さなことでもかまいませんので、お気づきのことがあれば教えてくださいね。\n{name}様の毎日が、少しでも穏やかでありますように。\n\nシウン"},
+  {label:"次回ご案内", subject:"次回のご予約について", body:"{name} 様\n\nいつもありがとうございます。\nそろそろ次のお手当ての頃合いかな、と思いご連絡しました。\nご都合のよい日がありましたら、お知らせください。\nもちろん、無理のないタイミングで大丈夫ですよ。\n\nシウン"}
+];
+
 function openMailModal(){
   const sel=document.getElementById('mailTagSelect');
   sel.innerHTML='<option value="">すべてのクライアント</option>'+tags.map(t=>`<option value="${esc(t.name)}">${esc(t.name)} のみ</option>`).join('');
+  const tsel=document.getElementById('mailTemplate');
+  tsel.innerHTML='<option value="">選ぶと件名・本文に差し込みます</option>'+MAIL_TEMPLATES.map((t,i)=>`<option value="${i}">${esc(t.label)}</option>`).join('');
+  tsel.value='';
   document.getElementById('mailSubject').value='';
   document.getElementById('mailBody').value='';
   renderMailRecipients();
   document.getElementById('mailModal').classList.add('open');
+}
+
+// 文例を件名・本文に差し込む。宛先が1名なら {name} をその方の氏名に置換
+function applyMailTemplate(){
+  const idx=document.getElementById('mailTemplate').value;
+  if(idx==='')return;
+  const t=MAIL_TEMPLATES[+idx];
+  if(!t)return;
+  const list=getMailRecipients();
+  let subject=t.subject,body=t.body;
+  if(list.length===1){
+    body=body.replace(/\{name\}/g,list[0].name||'');
+  }
+  const bodyEl=document.getElementById('mailBody');
+  const subjEl=document.getElementById('mailSubject');
+  const overwrite=(!subjEl.value.trim()&&!bodyEl.value.trim())||confirm('入力中の件名・本文を文例で置き換えますか？');
+  if(!overwrite){document.getElementById('mailTemplate').value='';return}
+  subjEl.value=subject;
+  bodyEl.value=body;
+  if(list.length!==1&&/\{name\}/.test(body)){
+    showToast('宛名の {name} は送信前に置き換えてください');
+  }
+  document.getElementById('mailTemplate').value='';
 }
 
 function getMailRecipients(){
@@ -2617,6 +2663,49 @@ function launchMail(){
     return;
   }
   location.href=url;
+}
+
+// ブラウザのGmail作成画面を宛先(BCC)・件名・本文入りで開く
+function launchGmail(){
+  const list=getMailRecipients();
+  if(!list.length){showToast('送信できる宛先がありません');return}
+  const bcc=list.map(c=>c.email).join(',');
+  const subject=document.getElementById('mailSubject').value;
+  const body=document.getElementById('mailBody').value;
+  const url=`https://mail.google.com/mail/?view=cm&fs=1&bcc=${encodeURIComponent(bcc)}`
+    +(subject?`&su=${encodeURIComponent(subject)}`:'')
+    +(body?`&body=${encodeURIComponent(body)}`:'');
+  if(url.length>8000){
+    showToast('宛先が多すぎます。アドレスをコピーしたのでGmailのBCC欄に貼り付けるか、配信用CSVをご利用ください');
+    copyMailAddrs();
+    return;
+  }
+  window.open(url,'_blank');
+}
+
+// メール配信サービス向けCSV（氏名・姓・名・メールアドレス）。email有りのみ・タグ絞込を反映・BOM付きUTF-8
+function exportMailCSV(){
+  const list=getMailRecipients();
+  if(!list.length){showToast('メールアドレスが登録された宛先がありません');return}
+  const esc=v=>{v=(v??'').toString();return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const header=['氏名','姓','名','メールアドレス'];
+  const rows=list.map(c=>{
+    const nm=(c.name||'').trim();
+    const sp=nm.search(/[\s　]/);
+    const sei=sp>=0?nm.slice(0,sp):nm;
+    const mei=sp>=0?nm.slice(sp+1).trim():'';
+    return[nm,sei,mei,c.email||''].map(esc).join(',');
+  });
+  const csv='﻿'+[header.map(esc).join(','),...rows].join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const d=new Date();
+  a.href=url;
+  a.download=`配信用リスト_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`${list.length}名分の配信用CSVを書き出しました`);
 }
 
 function copyMailAddrs(){
