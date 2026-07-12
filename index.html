@@ -11,6 +11,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="カルテ">
 <meta name="theme-color" content="#0071E3">
+<!-- ホーム画面アイコン（crm-app.htmlと同じ場所に apple-touch-icon.png を置くこと。公開先karte-appにも同梱） -->
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>クライアントカルテ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -503,7 +505,7 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
         <button class="btn-add" onclick="deleteCustomerFromSettings()" style="width:100%;background:var(--surface);color:#E30000;border:1.5px solid #E30000">この顧客を削除</button>
       </div>
       <hr class="divider">
-      <p style="font-size:11px;color:var(--text3);line-height:1.7">💡 データはこのブラウザ内に保存されています。ブラウザの履歴・キャッシュを削除するとデータが消える場合があるため、<strong style="color:#c2410c">定期的なバックアップ保存をおすすめします</strong>。</p>
+      <p style="font-size:11px;color:var(--text3);line-height:1.7">💡 データはこのブラウザ内に保存されています。ブラウザの履歴・キャッシュを削除するとデータが消える場合があるため、<strong style="color:#c2410c">定期的なバックアップ保存をおすすめします</strong>。<br>また、iPhoneのSafariで<strong>タブとして</strong>使っている場合、7日間開かないとデータが消えることがあります。<strong>ホーム画面に追加</strong>して使うと安心です（共有ボタン→「ホーム画面に追加」）。</p>
     </div>
   </div>
 </div>
@@ -565,8 +567,9 @@ const AVATAR_COLORS=[
 let selectedColorIdx=0;
 let pendingFiles=[]; // {id,name,size,type,dataUrl}
 
-function getAvatarColor(n){let h=0;for(let c of n)h=(h*31+c.charCodeAt(0))&0xffff;return AVATAR_COLORS[h%AVATAR_COLORS.length]}
-function initials(n){const p=n.trim().split(/\s+/);return p.length>=2?p[0][0]+p[1][0]:n.slice(0,2)}
+/* 名前が欠損した壊れたデータでも一覧全体が描画不能にならないよう空文字で防御 */
+function getAvatarColor(n){n=n||'？';let h=0;for(let c of n)h=(h*31+c.charCodeAt(0))&0xffff;return AVATAR_COLORS[h%AVATAR_COLORS.length]}
+function initials(n){n=n||'？';const p=n.trim().split(/\s+/);return p.length>=2?p[0][0]+p[1][0]:n.slice(0,2)}
 function formatDate(iso){const d=new Date(iso);return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`}
 function getTagStyle(n){const t=tags.find(t=>t.name===n);return t?TAG_COLORS[t.colorIdx]||TAG_COLORS[0]:{bg:'#f1f0ec',text:'#5c5a55'}}
 function fmtSize(b){return b<1024?b+'B':b<1048576?(b/1024).toFixed(0)+'KB':(b/1048576).toFixed(1)+'MB'}
@@ -619,6 +622,9 @@ async function persistAllBlobs(){
 /* 参照されていないIndexedDB内の添付(削除済み・追加キャンセル分)を掃除する */
 async function cleanupOrphanBlobs(){
   if(!idbOK)return;
+  /* 顧客が0件のとき(初回起動・localStorageだけが消えた場合)は掃除しない。
+     「全添付が未参照」と誤判定して契約書・写真の実データを全削除してしまうのを防ぐ */
+  if(!customers.length)return;
   try{
     const used=new Set();
     customers.forEach(c=>eachAttachment(c,a=>used.add(a.id)));
@@ -715,14 +721,21 @@ function saveData(){
     return false;
   }
 }
-function saveTags(){localStorage.setItem('crm_tags',JSON.stringify(tags));scheduleSync()}
-function saveFields(){localStorage.setItem('crm_fields',JSON.stringify(customFields));scheduleSync()}
+/* タグ・カスタム項目の保存。saveData同様、容量超過などの失敗を検知してbooleanを返す */
+function saveTags(){
+  try{localStorage.setItem('crm_tags',JSON.stringify(tags));scheduleSync();return true}
+  catch(e){alert('⚠️ タグを保存できませんでした\n\n保存容量がいっぱいの可能性があります。設定 → データ管理でバックアップを保存したうえで、不要な添付ファイルや履歴を削除して容量を空けてください。');return false}
+}
+function saveFields(){
+  try{localStorage.setItem('crm_fields',JSON.stringify(customFields));scheduleSync();return true}
+  catch(e){alert('⚠️ 項目を保存できませんでした\n\n保存容量がいっぱいの可能性があります。設定 → データ管理でバックアップを保存したうえで、不要な添付ファイルや履歴を削除して容量を空けてください。');return false}
+}
 
 /* search/filter */
 function onSearch(){searchQuery=document.getElementById('searchInput').value;renderList()}
 function getFiltered(){
   let list=[...customers];
-  if(searchQuery){const q=searchQuery.toLowerCase();list=list.filter(c=>c.name.toLowerCase().includes(q)||(c.kana||'').toLowerCase().includes(q)||(c.phone||'').replace(/-/g,'').includes(q.replace(/-/g,''))||(c.address||'').toLowerCase().includes(q)||(c.email||'').toLowerCase().includes(q)||(c.memo||'').toLowerCase().includes(q)||(c.rezoRecords||[]).some(r=>(r.number||'').toLowerCase().includes(q)))}
+  if(searchQuery){const q=searchQuery.toLowerCase();list=list.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.kana||'').toLowerCase().includes(q)||(c.phone||'').replace(/-/g,'').includes(q.replace(/-/g,''))||(c.address||'').toLowerCase().includes(q)||(c.email||'').toLowerCase().includes(q)||(c.memo||'').toLowerCase().includes(q)||(c.rezoRecords||[]).some(r=>(r.number||'').toLowerCase().includes(q)))}
   if(activeTag)list=list.filter(c=>c.tag===activeTag);
   const sort=document.getElementById('sortSelect').value;
   if(sort==='name')list.sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
@@ -792,16 +805,12 @@ function renderList(){
 function openDetail(id){
   pendingHistFiles=[];pendingRezoFiles=[];rezoEditAtts={};
   const c=customers.find(x=>x.id===id);if(!c)return;
-  const [bg,fg]=getAvatarColor(c.name),ts=getTagStyle(c.tag);
+  const [bg,fg]=getAvatarColor(c.name);
   const atts=c.attachments||[];
   const imgAtts=atts.filter(a=>a.type.startsWith('image/'));
   const fileAtts=atts.filter(a=>!a.type.startsWith('image/'));
 
-  const customRows=customFields.map(f=>{
-    const v=(c.customData||{})[f.id]||'';
-    const display=f.type==='url'&&v?`<a href="${esc(v)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(v)}</a>`:esc(v);
-    return dfieldHTML(`cf_${f.id}`,f.name,display||'',v,'text',id,f.id);
-  }).join('');
+  const customRows=customFields.map(f=>dfieldFor(c,`cf_${f.id}`,f.id)).join('');
 
   // 左下の独立した添付ファイルセクションは廃止（添付はご対応履歴内で管理）
   const attHTML='';
@@ -815,10 +824,7 @@ function openDetail(id){
         <div class="detail-hero-info">
           <div class="detail-name" id="detail-hero-name">${esc(c.name)}</div>
           <div class="detail-kana" id="detail-hero-kana">${esc(c.kana||'')}</div>
-          <div class="detail-badges">
-            ${c.tag?`<span class="tag" style="background:${ts.bg};color:${ts.text}">${esc(c.tag)}</span>`:''}
-            ${c.phone?`<a href="tel:${esc(c.phone.replace(/[^+\d]/g,''))}" style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border-radius:980px;padding:4px 14px;color:var(--accent);font-size:12px;font-weight:600;text-decoration:none" onclick="event.stopPropagation()">📞 ${esc(c.phone)}</a>`:''}
-          </div>
+          <div class="detail-badges" id="detail-hero-badges">${heroBadgesHTML(c)}</div>
         </div>
         <button class="detail-close-btn" onclick="closeModal('detailOverlay')">×</button>
       </div>
@@ -830,13 +836,7 @@ function openDetail(id){
         <div class="detail-col-left">
           <div class="detail-section">
             <div class="detail-section-hd"><span class="detail-section-title">基本情報</span></div>
-            ${dfieldHTML('name','氏名',esc(c.name),c.name,'text',id)}
-            ${dfieldHTML('kana','フリガナ',esc(c.kana||''),c.kana||'','text',id)}
-            ${dfieldHTML('tag','タグ',c.tag?`<span class="tag" style="background:${ts.bg};color:${ts.text}">${esc(c.tag)}</span>`:'',c.tag||'','tag',id)}
-            ${dfieldHTML('phone','電話番号',esc(c.phone||''),c.phone||'','tel',id)}
-            ${dfieldHTML('email','メール',c.email?`<a href="mailto:${esc(c.email)}" style="color:var(--accent);text-decoration:none" onclick="event.stopPropagation()">${esc(c.email)}</a>`:'',c.email||'','email',id)}
-            ${dfieldHTML('zip','郵便番号',esc(c.zip||''),c.zip||'','text',id)}
-            ${dfieldHTML('address','住所',esc(c.address||''),c.address||'','text',id)}
+            ${['name','kana','tag','phone','email','zip','address'].map(k=>dfieldFor(c,k)).join('')}
             ${customRows}
             <div class="dfield"><span class="dfield-label">登録日</span><span class="dfield-value">${formatDate(c.createdAt)}</span></div>
           </div>
@@ -1072,6 +1072,35 @@ function deleteRezoRecord(customerId,recId){
   showToast('削除しました');
 }
 
+/* ヒーロー部のバッジ（タグ・電話）。インライン編集の保存時に部分更新できるよう関数化 */
+function heroBadgesHTML(c){
+  const ts=getTagStyle(c.tag);
+  return`${c.tag?`<span class="tag" style="background:${ts.bg};color:${ts.text}">${esc(c.tag)}</span>`:''}
+    ${c.phone?`<a href="tel:${esc(c.phone.replace(/[^+\d]/g,''))}" style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border-radius:980px;padding:4px 14px;color:var(--accent);font-size:12px;font-weight:600;text-decoration:none" onclick="event.stopPropagation()">📞 ${esc(c.phone)}</a>`:''}`;
+}
+
+/* 顧客の現在値から1行分のdfield HTMLを作る（openDetailの全描画と、保存/キャンセル時の行単位更新の両方で使う） */
+function dfieldFor(c,fieldKey,cfId){
+  const id=c.id;
+  if(cfId){
+    const f=customFields.find(x=>x.id===cfId);
+    const v=(c.customData||{})[cfId]||'';
+    const display=f&&f.type==='url'&&v?`<a href="${esc(v)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(v)}</a>`:esc(v);
+    return dfieldHTML(`cf_${cfId}`,f?f.name:'',display||'',v,'text',id,cfId);
+  }
+  const ts=getTagStyle(c.tag);
+  switch(fieldKey){
+    case'name':return dfieldHTML('name','氏名',esc(c.name),c.name,'text',id);
+    case'kana':return dfieldHTML('kana','フリガナ',esc(c.kana||''),c.kana||'','text',id);
+    case'tag':return dfieldHTML('tag','タグ',c.tag?`<span class="tag" style="background:${ts.bg};color:${ts.text}">${esc(c.tag)}</span>`:'',c.tag||'','tag',id);
+    case'phone':return dfieldHTML('phone','電話番号',esc(c.phone||''),c.phone||'','tel',id);
+    case'email':return dfieldHTML('email','メール',c.email?`<a href="mailto:${esc(c.email)}" style="color:var(--accent);text-decoration:none" onclick="event.stopPropagation()">${esc(c.email)}</a>`:'',c.email||'','email',id);
+    case'zip':return dfieldHTML('zip','郵便番号',esc(c.zip||''),c.zip||'','text',id);
+    case'address':return dfieldHTML('address','住所',esc(c.address||''),c.address||'','text',id);
+  }
+  return'';
+}
+
 function dfieldHTML(fieldKey,label,displayHTML,rawVal,type,customerId,cfId){
   const isEmpty=!rawVal;
   const pencilIcon=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
@@ -1108,8 +1137,25 @@ function startFieldEdit(fieldKey,customerId,encodedVal,type,cfId){
   document.getElementById(`dedit-${fieldKey}-${customerId}`)?.focus();
 }
 
+/* 編集した行だけを現在値で描き直す（openDetail全再描画だとスクロールが先頭に戻るため） */
+function refreshDfieldRow(fieldKey,customerId,cfId){
+  const c=customers.find(x=>x.id===customerId);
+  const row=document.getElementById(`dfield-${fieldKey}-${customerId}`);
+  if(!c||!row){openDetail(customerId);return}
+  row.outerHTML=dfieldFor(c,fieldKey,cfId);
+  // 氏名・フリガナ・タグ・電話はヒーロー部にも表示があるので、そこだけ追従させる
+  if(fieldKey==='name'){
+    const nm=document.getElementById('detail-hero-name');if(nm)nm.textContent=c.name;
+    const av=document.querySelector('#detailPanel .detail-avatar');
+    if(av){const[bg,fg]=getAvatarColor(c.name);av.style.background=bg;av.style.color=fg;av.textContent=initials(c.name)}
+  }
+  if(fieldKey==='kana'){const k=document.getElementById('detail-hero-kana');if(k)k.textContent=c.kana||''}
+  if(fieldKey==='tag'||fieldKey==='phone'){const b=document.getElementById('detail-hero-badges');if(b)b.innerHTML=heroBadgesHTML(c)}
+}
+
 function cancelFieldEdit(fieldKey,customerId){
-  openDetail(customerId);// re-render
+  const cfId=fieldKey.startsWith('cf_')?fieldKey.slice(3):'';
+  refreshDfieldRow(fieldKey,customerId,cfId);
 }
 
 function saveFieldEdit(fieldKey,customerId,type,cfId){
@@ -1126,7 +1172,7 @@ function saveFieldEdit(fieldKey,customerId,type,cfId){
   }
   const ok=saveData();
   renderTagFilters();renderList();
-  openDetail(customerId);
+  refreshDfieldRow(fieldKey,customerId,cfId); // 行単位更新（スクロール位置を保つ）
   if(ok)showToast('保存しました');
 }
 
@@ -1144,25 +1190,15 @@ function saveMemo(id){
   const idx=customers.findIndex(c=>c.id===id);
   if(idx<0)return;
   customers[idx].memo=val;
-  const ok=saveData();openDetail(id);if(ok)showToast('メモを保存しました');
-}
-
-async function addDetailAttachment(customerId,input){
-  const newFiles=await readFilesAsBase64(input.files);
-  const idx=customers.findIndex(c=>c.id===customerId);
-  if(idx<0)return;
-  customers[idx].attachments=[...(customers[idx].attachments||[]),...newFiles];
-  const ok=saveData();renderList();openDetail(customerId);
-  if(ok)showToast(`${newFiles.length}件を追加しました`);
-  input.value='';
-}
-
-function escAttr(s){return(s||'').replace(/"/g,'&quot;')}
-
-function deleteAttachment(customerId,attId){
-  const c=customers.find(x=>x.id===customerId);if(!c)return;
-  c.attachments=(c.attachments||[]).filter(a=>a.id!==attId);
-  saveData();openDetail(customerId);showToast('削除しました');
+  const ok=saveData();
+  // 全再描画せず表示部分だけ更新する（スクロール位置を保つ）
+  const view=document.getElementById(`memo-view-${id}`);
+  if(view){
+    view.classList.toggle('empty-val',!val);
+    view.textContent=val||'タップしてメモを追加…';
+  }
+  cancelMemoEdit(id); // 編集欄を閉じて表示に戻す
+  if(ok)showToast('メモを保存しました');
 }
 
 function downloadFile(dataUrl,name){
@@ -1277,25 +1313,6 @@ function openAddModal(){
   document.getElementById('addModal').classList.add('open');
 }
 
-function openEditModal(id){
-  closeModal('detailOverlay');
-  const c=customers.find(x=>x.id===id);if(!c)return;
-  editingId=id;pendingFiles=[];
-  document.getElementById('modalTitle').textContent='顧客情報の編集';
-  document.getElementById('f-name').value=c.name||'';
-  document.getElementById('f-kana').value=c.kana||'';
-  document.getElementById('f-phone').value=c.phone||'';
-  document.getElementById('f-email').value=c.email||'';
-  document.getElementById('f-zip').value=c.zip||'';
-  document.getElementById('f-address').value=c.address||'';
-  document.getElementById('f-memo').value=c.memo||'';
-  document.getElementById('zipStatus').textContent='';
-  refreshTagSelect(c.tag||'');
-  renderCustomFieldsForm(c.customData||{});
-  renderAttachPreview();
-  document.getElementById('addModal').classList.add('open');
-}
-
 function saveCustomer(){
   const name=document.getElementById('f-name').value.trim();
   if(!name){showToast('氏名を入力してください');return}
@@ -1305,6 +1322,11 @@ function saveCustomer(){
   let msg;
   if(editingId){
     const idx=customers.findIndex(c=>c.id===editingId);
+    // 同期で他端末のデータが取り込まれた直後などは編集対象が見つからないことがある。クラッシュさせず入力を守る
+    if(idx<0){
+      alert('編集中の顧客データが見つかりませんでした。\n（同期で他の端末の変更が取り込まれた可能性があります）\n\n入力内容はこの画面に残っています。必要な内容を控えてから閉じてください。');
+      return;
+    }
     const existing=customers[idx].attachments||[];
     customers[idx]={...customers[idx],...data,attachments:[...existing,...pendingFiles]};
     msg='更新しました';
@@ -1347,7 +1369,8 @@ function deleteCustomerFromSettings(){
   if(!c)return;
   if(!confirm(`「${c.name}」さんを削除しますか？\n\n履歴・添付ファイルも含めて完全に削除され、元に戻せません。`))return;
   customers=customers.filter(x=>x.id!==id);
-  saveData();
+  // 保存に失敗したら画面を削除後の表示にしない（データと表示のずれを防ぐ）
+  if(!saveData())return;
   renderTagFilters();
   renderList();
   renderDeleteCustomerSelect();
@@ -1366,14 +1389,18 @@ function addTag(){
   const name=document.getElementById('newTagName').value.trim();
   if(!name){showToast('タグ名を入力してください');return}
   if(tags.find(t=>t.name===name)){showToast('同じ名前のタグがあります');return}
-  tags.push({name,colorIdx:selectedColorIdx});saveTags();document.getElementById('newTagName').value='';
+  tags.push({name,colorIdx:selectedColorIdx});
+  if(!saveTags()){tags.pop();return} // 保存に失敗したらメモリも巻き戻す
+  document.getElementById('newTagName').value='';
   renderTagManageList();renderTagFilters();renderList();showToast(`「${name}」を追加しました`);
 }
 function removeTag(i){
   const name=tags[i].name,count=customers.filter(c=>c.tag===name).length;
   if(!confirm(`「${name}」を削除しますか？${count?'\n（'+count+'件の顧客からタグが外れます）':''}`))return;
   if(activeTag===name){activeTag=null;try{localStorage.setItem('crm_activeTag','')}catch(e){}}
-  tags.splice(i,1);saveTags();renderTagManageList();renderTagFilters();renderList();showToast(`「${name}」を削除しました`);
+  const removed=tags.splice(i,1)[0];
+  if(!saveTags()){tags.splice(i,0,removed);return} // 保存に失敗したらメモリも巻き戻す
+  renderTagManageList();renderTagFilters();renderList();showToast(`「${name}」を削除しました`);
 }
 function renderFieldManageList(){
   const w=document.getElementById('fieldManageList');
@@ -1385,13 +1412,17 @@ function addField(){
   if(!name){showToast('項目名を入力してください');return}
   if(customFields.find(f=>f.name===name)){showToast('同じ名前の項目があります');return}
   const type=document.getElementById('newFieldType').value,id='cf_'+Date.now();
-  customFields.push({id,name,type});saveFields();document.getElementById('newFieldName').value='';
+  customFields.push({id,name,type});
+  if(!saveFields()){customFields.pop();return} // 保存に失敗したらメモリも巻き戻す
+  document.getElementById('newFieldName').value='';
   renderFieldManageList();showToast(`「${name}」を追加しました`);
 }
 function removeField(i){
   const name=customFields[i].name;
   if(!confirm(`「${name}」を削除しますか？（入力済みデータも消えます）`))return;
-  customFields.splice(i,1);saveFields();renderFieldManageList();showToast(`「${name}」を削除しました`);
+  const removed=customFields.splice(i,1)[0];
+  if(!saveFields()){customFields.splice(i,0,removed);return} // 保存に失敗したらメモリも巻き戻す
+  renderFieldManageList();showToast(`「${name}」を削除しました`);
 }
 
 /* ── Contact History ── */
@@ -1621,7 +1652,8 @@ function deleteHistory(customerId,histId){
   const idx=customers.findIndex(c=>c.id===customerId);
   if(idx<0)return;
   customers[idx].history=(customers[idx].history||[]).filter(h=>h.id!==histId);
-  saveData();
+  // 保存に失敗したら画面を削除後の表示にしない（データと表示のずれを防ぐ）
+  if(!saveData())return;
   document.getElementById(`hlist-${customerId}`).innerHTML=renderHistoryList(customers[idx]);
   showToast('削除しました');
 }
@@ -1648,6 +1680,8 @@ function importBackup(input){
     try{
       const data=JSON.parse(e.target.result);
       if(!data.customers||!Array.isArray(data.customers)){showToast('バックアップファイルの形式が正しくありません');return}
+      // 中身も軽く検証する。壊れたデータを取り込むと一覧が描画できなくなり、実質データにアクセス不能になるため
+      if(!data.customers.every(c=>c&&typeof c==='object'&&c.id&&c.name)){showToast('バックアップファイルの形式が正しくありません（顧客データが壊れています）');return}
       if(!confirm(`バックアップから復元しますか？\n\n・顧客 ${data.customers.length}件\n・タグ ${(data.tags||[]).length}件\n\n※現在のデータはすべて上書きされます`))return;
       customers=data.customers;
       tags=data.tags||tags;
@@ -1750,12 +1784,18 @@ function scheduleSync(){
   renderSyncStatus();
 }
 
+/* 同期エラーの文言。トークン期限切れ(401/403)は通信断と原因が違うため出し分ける */
+function syncErrMsg(e){
+  if(/:(401|403)\b/.test(e?.message||''))return'⚠️ 同期できませんでした。アクセストークンの期限切れの可能性があります。設定→データ管理で同期を解除し、新しいトークンで設定し直してください（データはこの端末には保存されています）';
+  return'⚠️ 同期できませんでした。通信環境を確認してください（データはこの端末には保存されています）';
+}
+
 async function syncUploadSafe(){
   if(!syncCfg||syncBusy)return;
   syncBusy=true;renderSyncStatus('☁️ 同期中…');
   const gen=syncGen;
   try{await syncUpload(gen);renderSyncStatus()}
-  catch(e){console.warn('sync upload failed',e);renderSyncStatus('⚠️ 同期できませんでした。通信環境を確認してください（データはこの端末には保存されています）')}
+  catch(e){console.warn('sync upload failed',e);renderSyncStatus(syncErrMsg(e))}
   syncBusy=false;
   if(syncGen!==gen)setTimeout(syncUploadSafe,300); // アップロード中に新しい変更があれば追い同期
 }
@@ -1783,9 +1823,25 @@ async function syncUpload(gen){
   }
 }
 
+/* 入力・編集の途中か？（自動同期の取り込みで編集中の内容が消えるのを防ぐ判定） */
+function isEditingNow(){
+  if(document.getElementById('addModal').classList.contains('open'))return true; // 新規登録・編集モーダル
+  if(!document.getElementById('detailOverlay').classList.contains('open'))return false;
+  const p=document.getElementById('detailPanel');
+  if(!p)return false;
+  if(p.querySelector('.dfield.editing'))return true; // 項目のインライン編集中
+  if([...p.querySelectorAll('[id^="memo-edit-"]')].some(el=>el.style.display!=='none'))return true; // メモ編集中
+  if([...p.querySelectorAll('[id^="hedit-"]')].some(el=>el.style.display!=='none'))return true; // 対応履歴の編集中
+  if(p.querySelector('[id^="rze-date-"]'))return true; // リソリューション記録の編集中
+  return false;
+}
+
 /* リモートの更新チェック(起動時・画面復帰時・手動)。30秒以内の連続チェックは省略 */
 async function syncCheckRemote(force,manual){
   if(!syncCfg)return;
+  /* 編集・入力の途中なら自動取り込みを見送る（customersの丸ごと差し替えで入力が消えるため）。
+     次の画面復帰・手動同期のタイミングで改めて取り込まれる */
+  if(!manual&&isEditingNow())return;
   if(!force&&Date.now()-lastRemoteCheck<30000)return;
   lastRemoteCheck=Date.now();
   const meta=await ghGetFileMeta();
@@ -1806,13 +1862,19 @@ async function syncCheckRemote(force,manual){
 
 /* リモートのデータをこの端末に反映する */
 async function applyRemote(remote,sha){
+  // 壊れたペイロードで手元のデータを空にしないための防御
+  if(!remote||!Array.isArray(remote.customers))throw new Error('bad remote payload');
   applyingRemote=true;
-  customers=remote.customers||[];
-  tags=remote.tags||tags;
-  customFields=remote.customFields||customFields;
-  await persistAllBlobs(); // クラウドから来た添付の実データをIndexedDBへ
-  saveData();saveTags();saveFields();
-  applyingRemote=false;
+  try{
+    customers=remote.customers;
+    tags=remote.tags||tags;
+    customFields=remote.customFields||customFields;
+    await persistAllBlobs(); // クラウドから来た添付の実データをIndexedDBへ
+    saveData();saveTags();saveFields();
+  }finally{
+    // 途中で失敗してもフラグを必ず戻す（trueのまま残るとscheduleSyncが止まり、以後の変更が二度と同期されなくなる）
+    applyingRemote=false;
+  }
   syncCfg.lastSha=sha;syncCfg.lastExportedAt=remote.exportedAt;syncCfg.pending=false;syncCfg.lastSyncAt=new Date().toISOString();
   saveSyncCfg();
   closeModal('detailOverlay');
@@ -1876,7 +1938,7 @@ async function syncNow(){
   try{
     if(syncCfg.pending)await syncUploadSafe();
     await syncCheckRemote(true,true);
-  }catch(e){console.warn(e);renderSyncStatus('⚠️ 同期できませんでした。通信環境を確認してください')}
+  }catch(e){console.warn(e);renderSyncStatus(syncErrMsg(e))}
 }
 
 function disableSync(){
