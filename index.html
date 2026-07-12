@@ -299,7 +299,7 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
   .filter-btn svg{width:22px;height:22px}
   .btn-primary{padding:0 14px}
   .toolbar{padding:24px 18px 8px}
-  .stats-bar,.tag-filters,.dash-bar,.followup-bar{padding-left:18px;padding-right:18px}
+  .stats-bar,.tag-filters,.followup-bar{padding-left:18px;padding-right:18px}
   .customer-list{padding:0 18px 90px}
   .meta-date{display:none}
   .form-row{grid-template-columns:1fr}
@@ -313,10 +313,9 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
   .btn-primary svg{width:20px;height:20px}
   .header-right{gap:4px}
 }
-/* ── ミニ統計ダッシュボード ── */
-.dash-bar{padding:2px max(28px,calc((100vw - 1000px)/2)) 14px;display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.dash-bar::-webkit-scrollbar{display:none}
-.dash-chip{flex:0 0 auto;min-width:88px;background:var(--surface);border-radius:14px;padding:11px 15px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:2px}
+/* ── 統計チップ（設定モーダル内） ── */
+#settingsStats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:2px}
+.dash-chip{flex:1 1 calc(50% - 4px);min-width:88px;background:var(--surface2);border-radius:14px;padding:11px 15px;display:flex;flex-direction:column;gap:2px}
 .dash-chip .dc-num{font-size:21px;font-weight:700;letter-spacing:-.02em;color:var(--text1);line-height:1.1}
 .dash-chip .dc-label{font-size:11.5px;color:var(--text3);font-weight:500;white-space:nowrap}
 .dash-chip.tappable{cursor:pointer;transition:transform .15s,box-shadow .15s}
@@ -376,7 +375,6 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
     <option value="followup">フォロー期限順</option>
   </select>
 </div>
-<div class="dash-bar" id="dashboardBar"></div>
 <div class="tag-filters" id="tagFilters"></div>
 <div class="stats-bar"><span class="stat" id="statsText"></span></div>
 <div class="followup-bar" id="followUpBar" style="display:none"></div>
@@ -469,6 +467,9 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
       <span class="modal-title">設定</span>
       <button class="modal-close" onclick="closeModal('settingsModal')">×</button>
     </div>
+    <div style="font-size:12px;font-weight:600;color:var(--text3);margin:0 0 8px">📊 統計</div>
+    <div id="settingsStats"></div>
+    <hr class="divider" style="margin-top:14px">
     <div class="settings-nav">
       <button class="settings-tab active" id="tab-tags" onclick="switchTab('tags')">タグ管理</button>
       <button class="settings-tab" id="tab-fields" onclick="switchTab('fields')">項目追加</button>
@@ -845,8 +846,9 @@ function fmtFollowUpWhen(d){
   if(d<=7)return{text:`${d}日後`,color:'#C2560E'};
   return{text:`${d}日後`,color:'var(--text3)'};
 }
+// 統計チップ（⚙️設定モーダル内に表示）。トップページには出さない
 function renderDashboard(){
-  const el=document.getElementById('dashboardBar');if(!el)return;
+  const el=document.getElementById('settingsStats');if(!el)return;
   const newThisMonth=customers.filter(c=>isThisMonth(c.createdAt)).length;
   const due=getDueFollowUps().length;
   const chips=[
@@ -854,12 +856,13 @@ function renderDashboard(){
     {num:newThisMonth,label:'今月の新規'},
     {num:thisMonthContactCount(),label:'今月の対応'}
   ];
-  const fuChip=`<div class="dash-chip tappable${due?' alert':''}" onclick="scrollToFollowUps()"><span class="dc-num">${due}</span><span class="dc-label">要フォロー</span></div>`;
   const rest=chips.map(c=>`<div class="dash-chip"><span class="dc-num">${c.num}</span><span class="dc-label">${c.label}</span></div>`).join('');
-  // 要フォローがある時は最も目立つ先頭に、無い時は末尾に
-  el.innerHTML=due?(fuChip+rest):(rest+fuChip);
+  const fuChip=`<div class="dash-chip tappable${due?' alert':''}" onclick="jumpToFollowUps()"><span class="dc-num">${due}</span><span class="dc-label">要フォロー</span></div>`;
+  el.innerHTML=rest+fuChip;
 }
-function scrollToFollowUps(){
+// 設定を閉じてトップの🔔フォローアップ一覧へ
+function jumpToFollowUps(){
+  closeModal('settingsModal');
   const el=document.getElementById('followUpBar');
   if(el&&el.style.display!=='none')el.scrollIntoView({behavior:'smooth',block:'center'});
 }
@@ -899,7 +902,7 @@ function renderList(){
   }).filter(Boolean).join('　·　');
   document.getElementById('statsText').innerHTML=`<strong style="color:var(--text1)">${list.length}件</strong> / 全${customers.length}件${tagStats?`<span style="color:var(--text3)">　｜　${tagStats}</span>`:''}`;
   const el=document.getElementById('customerList');
-  if(!list.length){el.innerHTML=`<div class="empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>該当する顧客が見つかりません</p></div>`;renderDashboard();renderFollowUpBar();return}
+  if(!list.length){el.innerHTML=`<div class="empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>該当する顧客が見つかりません</p></div>`;renderFollowUpBar();return}
   el.innerHTML=list.map(c=>{
     const [bg,fg]=getAvatarColor(c.name),ts=getTagStyle(c.tag);
     const attCount=(c.attachments||[]).length;
@@ -921,7 +924,7 @@ function renderList(){
       </div>
       <span class="meta-date">${formatDate(c.createdAt)}</span>
     </div>`}).join('');
-  renderDashboard();renderFollowUpBar();
+  renderFollowUpBar();
 }
 
 /* detail */
@@ -1477,7 +1480,7 @@ function closeLightbox(){document.getElementById('lightbox').classList.remove('o
 
 /* settings */
 function openSettings(){
-  switchTab('tags');renderTagManageList();renderColorPicker();renderFieldManageList();
+  switchTab('tags');renderTagManageList();renderColorPicker();renderFieldManageList();renderDashboard();
   document.getElementById('settingsModal').classList.add('open');
 }
 function switchTab(tab){
