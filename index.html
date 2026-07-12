@@ -299,7 +299,7 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
   .filter-btn svg{width:22px;height:22px}
   .btn-primary{padding:0 14px}
   .toolbar{padding:24px 18px 8px}
-  .stats-bar,.tag-filters{padding-left:18px;padding-right:18px}
+  .stats-bar,.tag-filters,.dash-bar,.followup-bar{padding-left:18px;padding-right:18px}
   .customer-list{padding:0 18px 90px}
   .meta-date{display:none}
   .form-row{grid-template-columns:1fr}
@@ -313,6 +313,27 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
   .btn-primary svg{width:20px;height:20px}
   .header-right{gap:4px}
 }
+/* ── ミニ統計ダッシュボード ── */
+.dash-bar{padding:2px max(28px,calc((100vw - 1000px)/2)) 14px;display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.dash-bar::-webkit-scrollbar{display:none}
+.dash-chip{flex:0 0 auto;min-width:88px;background:var(--surface);border-radius:14px;padding:11px 15px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:2px}
+.dash-chip .dc-num{font-size:21px;font-weight:700;letter-spacing:-.02em;color:var(--text1);line-height:1.1}
+.dash-chip .dc-label{font-size:11.5px;color:var(--text3);font-weight:500;white-space:nowrap}
+.dash-chip.tappable{cursor:pointer;transition:transform .15s,box-shadow .15s}
+.dash-chip.tappable:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.dash-chip.alert{background:#FFF4EF}
+.dash-chip.alert .dc-num{color:#E8551F}
+/* ── フォローアップ ── */
+.followup-bar{padding:0 max(28px,calc((100vw - 1000px)/2)) 16px}
+.followup-card{background:#FFF8F1;border:1px solid #FBE2CE;border-radius:var(--radius);padding:14px 18px 12px;box-shadow:var(--shadow-sm)}
+.followup-hd{font-size:13px;font-weight:700;color:#C2560E;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.followup-item{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid #FBE2CE;cursor:pointer}
+.followup-item:first-of-type{border-top:none}
+.fu-name{font-weight:600;color:var(--text1);font-size:15px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fu-when{font-size:12.5px;font-weight:700;flex-shrink:0}
+.fu-done{flex-shrink:0;height:30px;padding:0 13px;border-radius:980px;background:#fff;color:#C2560E;border:1px solid #FBE2CE;font-size:12px;font-family:inherit;font-weight:600;cursor:pointer;transition:background .15s}
+.fu-done:hover{background:#FFF0E4}
+.fu-badge{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:600;padding:1px 8px;border-radius:980px;background:#FFF0EA}
 </style>
 </head>
 <body>
@@ -352,10 +373,13 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
     <option value="name">名前順</option>
     <option value="date">登録日順</option>
     <option value="contact">最終対応順</option>
+    <option value="followup">フォロー期限順</option>
   </select>
 </div>
+<div class="dash-bar" id="dashboardBar"></div>
 <div class="tag-filters" id="tagFilters"></div>
 <div class="stats-bar"><span class="stat" id="statsText"></span></div>
+<div class="followup-bar" id="followUpBar" style="display:none"></div>
 <div class="customer-list" id="customerList"></div>
 
 <!-- Add/Edit Modal -->
@@ -498,6 +522,14 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
       <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">顧客一覧をExcelやGoogleスプレッドシートで開ける形式で書き出します（添付ファイルは含まれません）。</p>
       <button class="btn-add" onclick="exportCSV()" style="width:100%;background:var(--surface);color:var(--text2);border:1.5px solid var(--border)">CSVをダウンロード</button>
       <hr class="divider">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600">📥 CSVから取り込み</p>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">前に使っていた顧客管理ソフトなどから書き出したCSV（Excel）を取り込めます。列の対応づけは自動で推測し、取り込む前に確認できます。同じ氏名＋電話番号の方は重複としてスキップされます。</p>
+      <button class="btn-add" onclick="openCsvImport()" style="width:100%;background:var(--surface);color:var(--accent);border:1.5px solid var(--accent)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        CSVファイルを選ぶ
+      </button>
+      <input type="file" id="csvImportInput" accept=".csv,text/csv" style="display:none" onchange="onCsvFileSelected(this)">
+      <hr class="divider">
       <p style="font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600">🗑️ 顧客の削除</p>
       <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">削除した顧客は履歴・添付ファイルごと完全に消え、元に戻せません。念のため事前のバックアップ保存をおすすめします。</p>
       <div style="display:flex;flex-direction:column;gap:8px">
@@ -507,6 +539,17 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
       <hr class="divider">
       <p style="font-size:11px;color:var(--text3);line-height:1.7">💡 データはこのブラウザ内に保存されています。ブラウザの履歴・キャッシュを削除するとデータが消える場合があるため、<strong style="color:#c2410c">定期的なバックアップ保存をおすすめします</strong>。<br>また、iPhoneのSafariで<strong>タブとして</strong>使っている場合、7日間開かないとデータが消えることがあります。<strong>ホーム画面に追加</strong>して使うと安心です（共有ボタン→「ホーム画面に追加」）。</p>
     </div>
+  </div>
+</div>
+
+<!-- CSV Import Modal -->
+<div class="modal-overlay" id="csvImportModal" onclick="closeIfOverlay(event,'csvImportModal')">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title">CSVから取り込み</span>
+      <button class="modal-close" onclick="closeModal('csvImportModal')">×</button>
+    </div>
+    <div id="csvImportBody"></div>
   </div>
 </div>
 
@@ -740,6 +783,7 @@ function getFiltered(){
   const sort=document.getElementById('sortSelect').value;
   if(sort==='name')list.sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
   else if(sort==='contact')list.sort((a,b)=>lastContactTime(b)-lastContactTime(a));
+  else if(sort==='followup')list.sort((a,b)=>{const da=followUpDiff(a),db=followUpDiff(b);return(da===null?Infinity:da)-(db===null?Infinity:db)});
   else list.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   return list;
 }
@@ -765,6 +809,81 @@ function lastContactLabel(c){
 }
 function highlight(text,q){if(!q)return esc(text);const i=text.toLowerCase().indexOf(q.toLowerCase());if(i<0)return esc(text);return esc(text.slice(0,i))+'<mark>'+esc(text.slice(i,i+q.length))+'</mark>'+esc(text.slice(i+q.length))}
 
+/* ── ミニ統計ダッシュボード & フォローアップ ── */
+function isThisMonth(dLike){
+  if(!dLike)return false;
+  const d=new Date(dLike);if(isNaN(d))return false;
+  const n=new Date();
+  return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth();
+}
+function thisMonthContactCount(){
+  let n=0;
+  customers.forEach(c=>{
+    (c.history||[]).forEach(h=>{if(isThisMonth(h.date))n++});
+    (c.rezoRecords||[]).forEach(r=>{if(isThisMonth(r.date))n++});
+  });
+  return n;
+}
+/* 次回連絡予定日と今日の差（日数）。予定なしはnull。負=超過 / 0=今日 / 正=未来 */
+function followUpDiff(c){
+  if(!c.followUpDate)return null;
+  const a=new Date(c.followUpDate+'T00:00:00'),b=new Date(todayYMD()+'T00:00:00');
+  if(isNaN(a))return null;
+  return Math.round((a-b)/86400000);
+}
+function getDueFollowUps(){
+  return customers
+    .map(c=>({c,d:followUpDiff(c)}))
+    .filter(x=>x.d!==null&&x.d<=0)   // 本日以前（超過・本日）
+    .sort((a,b)=>a.d-b.d)            // 最も超過した順
+    .map(x=>x.c);
+}
+function fmtFollowUpWhen(d){
+  if(d===0)return{text:'今日',color:'#E8551F'};
+  if(d<0)return{text:`${-d}日超過`,color:'#E30000'};
+  if(d===1)return{text:'明日',color:'#C2560E'};
+  if(d<=7)return{text:`${d}日後`,color:'#C2560E'};
+  return{text:`${d}日後`,color:'var(--text3)'};
+}
+function renderDashboard(){
+  const el=document.getElementById('dashboardBar');if(!el)return;
+  const newThisMonth=customers.filter(c=>isThisMonth(c.createdAt)).length;
+  const due=getDueFollowUps().length;
+  const chips=[
+    {num:customers.length,label:'顧客数'},
+    {num:newThisMonth,label:'今月の新規'},
+    {num:thisMonthContactCount(),label:'今月の対応'}
+  ];
+  const fuChip=`<div class="dash-chip tappable${due?' alert':''}" onclick="scrollToFollowUps()"><span class="dc-num">${due}</span><span class="dc-label">要フォロー</span></div>`;
+  const rest=chips.map(c=>`<div class="dash-chip"><span class="dc-num">${c.num}</span><span class="dc-label">${c.label}</span></div>`).join('');
+  // 要フォローがある時は最も目立つ先頭に、無い時は末尾に
+  el.innerHTML=due?(fuChip+rest):(rest+fuChip);
+}
+function scrollToFollowUps(){
+  const el=document.getElementById('followUpBar');
+  if(el&&el.style.display!=='none')el.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function renderFollowUpBar(){
+  const el=document.getElementById('followUpBar');if(!el)return;
+  const due=getDueFollowUps();
+  if(!due.length){el.style.display='none';el.innerHTML='';return}
+  el.style.display='';
+  const items=due.slice(0,8).map(c=>{
+    const w=fmtFollowUpWhen(followUpDiff(c));
+    return`<div class="followup-item" onclick="openDetail('${c.id}')">
+      <span class="fu-name">${esc(c.name)}</span>
+      <span class="fu-when" style="color:${w.color}">🔔 ${w.text}</span>
+      <button class="fu-done" onclick="event.stopPropagation();completeFollowUp('${c.id}')">完了</button>
+    </div>`}).join('');
+  const more=due.length>8?`<div style="font-size:12px;color:var(--text3);padding-top:8px">ほか ${due.length-8}件</div>`:'';
+  el.innerHTML=`<div class="followup-card"><div class="followup-hd">🔔 フォローアップ（${due.length}件）</div>${items}${more}</div>`;
+}
+function completeFollowUp(id){
+  const idx=customers.findIndex(c=>c.id===id);if(idx<0)return;
+  customers[idx].followUpDate='';
+  if(saveData()){renderList();showToast('フォローを完了にしました')}
+}
+
 function renderTagFilters(){
   document.getElementById('tagFilters').innerHTML=
     ['すべて',...tags.map(t=>t.name)].map(t=>{const isAll=t==='すべて',active=isAll?!activeTag:activeTag===t;return`<button class="tag-filter ${active?'active':''}" data-tag="${isAll?'':esc(t)}" onclick="setTag(this.dataset.tag)">${esc(t)}</button>`}).join('');
@@ -780,11 +899,13 @@ function renderList(){
   }).filter(Boolean).join('　·　');
   document.getElementById('statsText').innerHTML=`<strong style="color:var(--text1)">${list.length}件</strong> / 全${customers.length}件${tagStats?`<span style="color:var(--text3)">　｜　${tagStats}</span>`:''}`;
   const el=document.getElementById('customerList');
-  if(!list.length){el.innerHTML=`<div class="empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>該当する顧客が見つかりません</p></div>`;return}
+  if(!list.length){el.innerHTML=`<div class="empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>該当する顧客が見つかりません</p></div>`;renderDashboard();renderFollowUpBar();return}
   el.innerHTML=list.map(c=>{
     const [bg,fg]=getAvatarColor(c.name),ts=getTagStyle(c.tag);
     const attCount=(c.attachments||[]).length;
     const lc=lastContactLabel(c);
+    const fd=followUpDiff(c);
+    const fuBadge=(fd!==null&&fd<=0)?(w=>`<span class="fu-badge" style="color:${w.color}">🔔 ${w.text}</span>`)(fmtFollowUpWhen(fd)):'';
     return`<div class="customer-card" onclick="openDetail('${c.id}')">
       <div class="avatar" style="background:${bg};color:${fg}">${initials(c.name)}</div>
       <div class="customer-info">
@@ -795,10 +916,12 @@ function renderList(){
           ${c.tag?`<span class="tag" style="background:${ts.bg};color:${ts.text}">${esc(c.tag)}</span>`:''}
           ${attCount?`<span style="font-size:11px;color:var(--text3)">📎${attCount}</span>`:''}
           ${lc?`<span style="font-size:12px;color:var(--text3);font-weight:500">💬 ${lc}</span>`:''}
+          ${fuBadge}
         </div>
       </div>
       <span class="meta-date">${formatDate(c.createdAt)}</span>
     </div>`}).join('');
+  renderDashboard();renderFollowUpBar();
 }
 
 /* detail */
@@ -838,6 +961,7 @@ function openDetail(id){
             <div class="detail-section-hd"><span class="detail-section-title">基本情報</span></div>
             ${['name','kana','tag','phone','email','zip','address'].map(k=>dfieldFor(c,k)).join('')}
             ${customRows}
+            ${dfieldFor(c,'followUpDate')}
             <div class="dfield"><span class="dfield-label">登録日</span><span class="dfield-value">${formatDate(c.createdAt)}</span></div>
           </div>
 
@@ -1097,6 +1221,14 @@ function dfieldFor(c,fieldKey,cfId){
     case'email':return dfieldHTML('email','メール',c.email?`<a href="mailto:${esc(c.email)}" style="color:var(--accent);text-decoration:none" onclick="event.stopPropagation()">${esc(c.email)}</a>`:'',c.email||'','email',id);
     case'zip':return dfieldHTML('zip','郵便番号',esc(c.zip||''),c.zip||'','text',id);
     case'address':return dfieldHTML('address','住所',esc(c.address||''),c.address||'','text',id);
+    case'followUpDate':{
+      let disp='';
+      if(c.followUpDate){
+        const d=followUpDiff(c),w=d!==null?fmtFollowUpWhen(d):null;
+        disp=`${fmtRezoDate(c.followUpDate)}${w?` <span style="font-size:12px;font-weight:700;color:${w.color}">（${w.text}）</span>`:''}`;
+      }
+      return dfieldHTML('followUpDate','次回連絡予定',disp,c.followUpDate||'','date',id);
+    }
   }
   return'';
 }
@@ -1123,7 +1255,7 @@ function startFieldEdit(fieldKey,customerId,encodedVal,type,cfId){
     const opts=tags.map(t=>`<option value="${esc(t.name)}" ${rawVal===t.name?'selected':''}>${esc(t.name)}</option>`).join('');
     inputHTML=`<select class="dfield-input" id="dedit-${fieldKey}-${customerId}" style="height:42px"><option value="">なし</option>${opts}</select>`;
   }else{
-    inputHTML=`<input class="dfield-input" id="dedit-${fieldKey}-${customerId}" type="${type==='tel'?'tel':type==='email'?'email':'text'}" value="${esc(rawVal)}" placeholder="${esc(document.querySelector(`#${rowId} .dfield-label`).textContent)}を入力">`;
+    inputHTML=`<input class="dfield-input" id="dedit-${fieldKey}-${customerId}" type="${type==='tel'?'tel':type==='email'?'email':type==='date'?'date':'text'}" value="${esc(rawVal)}" placeholder="${esc(document.querySelector(`#${rowId} .dfield-label`).textContent)}を入力">`;
   }
   row.innerHTML=`
     <span class="dfield-label">${document.querySelector('#'+rowId+' .dfield-label')?.textContent||''}</span>
@@ -1698,14 +1830,287 @@ function importBackup(input){
   input.value='';
 }
 
+/* ══════════════════════════════════════════════════════════
+   CSVインポート（旧・顧客管理ソフトからのCSV取り込み）
+   解析エンジン（parseCSV / detectColumnMapping / buildCustomers /
+   normalizePhone / normalizeZip / dedupeAgainst）は依存ゼロの純粋関数。
+   ══════════════════════════════════════════════════════════ */
+
+// 全角英数記号→半角、全角スペース→半角スペース
+function csvToHalfWidth(s){
+  if(!s)return'';
+  return String(s).replace(/[！-～]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0xFEE0)).replace(/　/g,' ');
+}
+// 見出しの正規化：BOM除去・全角→半角・空白全除去・小文字化
+function csvNormalizeHeader(s){
+  return csvToHalfWidth(String(s==null?'':s)).replace(/^﻿/,'').replace(/\s+/g,'').toLowerCase();
+}
+function csvNormNameKey(s){return String(s==null?'':s).replace(/[\s　]+/g,'')}
+function csvNormPhoneKey(s){return csvToHalfWidth(String(s==null?'':s)).replace(/[^0-9]/g,'')}
+
+// 堅牢なCSVパース。BOM除去・クオート・""エスケープ・フィールド内改行・CRLF/LF/CR混在対応
+function parseCSV(text){
+  if(typeof text!=='string'||text==='')return[];
+  if(text.charCodeAt(0)===0xFEFF)text=text.slice(1);
+  if(text==='')return[];
+  var rows=[],row=[],field='',inQuotes=false;
+  for(var i=0;i<text.length;i++){
+    var c=text[i];
+    if(inQuotes){
+      if(c==='"'){if(text[i+1]==='"'){field+='"';i++}else{inQuotes=false}}
+      else{field+=c}
+    }else{
+      if(c==='"'){inQuotes=true}
+      else if(c===','){row.push(field);field=''}
+      else if(c==='\r'||c==='\n'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(field);field='';rows.push(row);row=[]}
+      else{field+=c}
+    }
+  }
+  if(field!==''||row.length>0){row.push(field);rows.push(row)}
+  while(rows.length>0){var last=rows[rows.length-1];if(last.length===1&&last[0]==='')rows.pop();else break}
+  return rows;
+}
+
+// 各フィールドの同義語辞書。exact＝完全一致、part＝部分一致、exclude＝この語を含む見出しは対象外
+var CSV_HEADER_DICT={
+  name:{exact:['氏名','名前','お名前','顧客名','担当者名','お客様名','お客さま名','name','fullname','customername'],part:['氏名','名前','顧客名','担当者名','name'],exclude:['ふりがな','フリガナ','かな','カナ','よみ','ヨミ','読み','kana']},
+  kana:{exact:['フリガナ','ふりがな','カナ','かな','ヨミガナ','よみがな','読み','ヨミ','kana','furigana'],part:['フリガナ','ふりがな','ヨミガナ','よみがな','カナ','かな','kana','furigana'],exclude:[]},
+  phone:{exact:['電話番号','電話','tel','携帯電話','携帯','携帯番号','phone','mobile','telephone'],part:['電話','携帯','tel','phone','mobile'],exclude:[]},
+  email:{exact:['メールアドレス','メール','eメール','mail','email','e-mail','メアド'],part:['メール','メアド','mail'],exclude:[]},
+  zip:{exact:['郵便番号','〒','zip','zipcode','postal','postalcode','郵便'],part:['郵便','〒','zip','postal'],exclude:[]},
+  address:{exact:['住所','ご住所','所在地','address','addr'],part:['住所','所在地','address','addr'],exclude:[]},
+  tag:{exact:['タグ','区分','顧客区分','ステータス','会員種別','会員区分','種別','ランク','category','tag','status'],part:['タグ','区分','ステータス','種別','ランク','category','status'],exclude:[]},
+  memo:{exact:['メモ','備考','特記','コメント','note','notes','memo','remarks','特記事項','備考欄'],part:['メモ','備考','特記','コメント','note','memo','remark'],exclude:[]}
+};
+var CSV_FIELD_ORDER=['name','kana','phone','email','zip','address','tag','memo'];
+
+// 見出し行から各フィールドの列インデックスを推定（該当なしは -1）
+function detectColumnMapping(headerRow){
+  var mapping={name:-1,kana:-1,phone:-1,email:-1,zip:-1,address:-1,tag:-1,memo:-1};
+  if(!headerRow||!headerRow.length)return mapping;
+  var headers=[];
+  for(var i=0;i<headerRow.length;i++)headers.push(csvNormalizeHeader(headerRow[i]));
+  var used={};
+  function excluded(field,h){var ex=CSV_HEADER_DICT[field].exclude;for(var k=0;k<ex.length;k++){if(h.indexOf(ex[k].toLowerCase())!==-1||h.indexOf(ex[k])!==-1)return true}return false}
+  // 第1パス：完全一致
+  for(var f=0;f<CSV_FIELD_ORDER.length;f++){
+    var field=CSV_FIELD_ORDER[f],words=CSV_HEADER_DICT[field].exact;
+    for(var c=0;c<headers.length&&mapping[field]===-1;c++){
+      if(used[c]||headers[c]==='')continue;
+      if(excluded(field,headers[c]))continue;
+      for(var w=0;w<words.length;w++){if(headers[c]===words[w].toLowerCase()||headers[c]===words[w]){mapping[field]=c;used[c]=true;break}}
+    }
+  }
+  // 第2パス：部分一致
+  for(f=0;f<CSV_FIELD_ORDER.length;f++){
+    field=CSV_FIELD_ORDER[f];if(mapping[field]!==-1)continue;
+    words=CSV_HEADER_DICT[field].part;
+    for(c=0;c<headers.length&&mapping[field]===-1;c++){
+      if(used[c]||headers[c]==='')continue;
+      if(excluded(field,headers[c]))continue;
+      for(w=0;w<words.length;w++){var kw=words[w].toLowerCase();if(headers[c].indexOf(kw)!==-1||headers[c].indexOf(words[w])!==-1){mapping[field]=c;used[c]=true;break}}
+    }
+  }
+  return mapping;
+}
+
+// データ行（ヘッダー除去済み）を顧客オブジェクトに変換。氏名が空の行はスキップ
+function buildCustomers(rows,mapping){
+  var out=[],skipped=0;
+  if(!rows||!rows.length)return{customers:out,skipped:skipped};
+  for(var i=0;i<rows.length;i++){
+    var row=rows[i];
+    var get=function(idx){if(idx==null||idx<0||idx>=row.length)return'';return String(row[idx]==null?'':row[idx]).trim()};
+    var name=get(mapping.name);
+    if(name===''){skipped++;continue}
+    out.push({name:name,kana:get(mapping.kana),phone:normalizePhone(get(mapping.phone)),email:get(mapping.email),zip:normalizeZip(get(mapping.zip)),address:get(mapping.address),tag:get(mapping.tag),memo:get(mapping.memo)});
+  }
+  return{customers:out,skipped:skipped};
+}
+// 全角→半角、括弧はハイフンに寄せる、余分な空白・ハイフンを整理（過剰整形はしない）
+function normalizePhone(s){
+  if(s==null)return'';
+  var t=csvToHalfWidth(String(s)).trim();if(t==='')return'';
+  t=t.replace(/[ー−‐―–—]/g,'-').replace(/[()（）]/g,'-').replace(/\s+/g,' ').replace(/-{2,}/g,'-').replace(/^[\s-]+|[\s-]+$/g,'');
+  return t;
+}
+// 全角→半角。数字7桁なら NNN-NNNN に整形。それ以外はトリムのみ
+function normalizeZip(s){
+  if(s==null)return'';
+  var t=csvToHalfWidth(String(s)).trim();if(t==='')return'';
+  var digits=t.replace(/[〒\s-]/g,'');
+  if(/^[0-9]{7}$/.test(digits))return digits.slice(0,3)+'-'+digits.slice(3);
+  return t;
+}
+// 氏名（空白除去）が一致し、電話（数字のみ）が一致 or どちらかが空 → 重複
+function dedupeAgainst(newCustomers,existingCustomers){
+  var toAdd=[],duplicates=[],existing=existingCustomers||[];
+  for(var i=0;i<(newCustomers||[]).length;i++){
+    var n=newCustomers[i],nName=csvNormNameKey(n.name),nPhone=csvNormPhoneKey(n.phone),isDup=false;
+    if(nName!==''){
+      for(var j=0;j<existing.length;j++){
+        var e=existing[j];
+        if(csvNormNameKey(e.name)!==nName)continue;
+        var ePhone=csvNormPhoneKey(e.phone);
+        if(nPhone===ePhone||nPhone===''||ePhone===''){isDup=true;break}
+      }
+    }
+    if(isDup)duplicates.push(n);else toAdd.push(n);
+  }
+  return{toAdd:toAdd,duplicates:duplicates};
+}
+
+/* ── 取り込みUI ── */
+const CSV_IMPORT_FIELDS=[
+  {key:'name',label:'氏名',required:true},
+  {key:'kana',label:'フリガナ'},
+  {key:'tag',label:'タグ（区分）'},
+  {key:'phone',label:'電話番号'},
+  {key:'email',label:'メール'},
+  {key:'zip',label:'郵便番号'},
+  {key:'address',label:'住所'},
+  {key:'memo',label:'メモ'}
+];
+let csvImportState=null; // {header, dataRows, mapping}
+
+function openCsvImport(){document.getElementById('csvImportInput').click()}
+
+function onCsvFileSelected(input){
+  const file=input.files&&input.files[0];
+  input.value='';
+  if(!file)return;
+  if(file.size>8*1024*1024){alert('⚠️ ファイルが大きすぎます（8MBまで）。');return}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const rows=parseCSV(String(e.target.result||''));
+      if(rows.length<2){alert('⚠️ 取り込めるデータが見つかりませんでした。\n\n1行目に見出し（氏名・電話など）、2行目以降にデータがあるCSVを選んでください。');return}
+      const header=rows[0],dataRows=rows.slice(1);
+      csvImportState={header,dataRows,mapping:detectColumnMapping(header)};
+      renderCsvMappingUI();
+      document.getElementById('csvImportModal').classList.add('open');
+    }catch(err){alert('⚠️ CSVの読み込みに失敗しました。\n\n'+(err&&err.message||err));}
+  };
+  reader.onerror=()=>alert('⚠️ ファイルを読み込めませんでした。');
+  // Excel系の日本語CSVはShift_JISのことがあるため、UTF-8で文字化けする場合に備えた読み分け
+  readCsvText(file,reader);
+}
+// まずUTF-8で読み、文字化け（U+FFFD多発）を検知したらShift_JISで読み直す
+function readCsvText(file,reader){
+  const utf8=new FileReader();
+  utf8.onload=e=>{
+    const txt=String(e.target.result||'');
+    const bad=(txt.match(/�/g)||[]).length;
+    if(bad>2&&window.TextDecoder){
+      const r2=new FileReader();
+      r2.onload=ev=>{
+        try{const dec=new TextDecoder('shift_jis');reader.onload({target:{result:dec.decode(new Uint8Array(ev.target.result))}})}
+        catch(_){reader.onload({target:{result:txt}})}
+      };
+      r2.onerror=reader.onerror;
+      r2.readAsArrayBuffer(file);
+    }else{
+      reader.onload({target:{result:txt}});
+    }
+  };
+  utf8.onerror=reader.onerror;
+  utf8.readAsText(file);
+}
+
+function renderCsvMappingUI(){
+  const st=csvImportState;if(!st)return;
+  const colOpts=idx=>['<option value="-1">（読み込まない）</option>']
+    .concat(st.header.map((h,i)=>`<option value="${i}" ${idx===i?'selected':''}>${esc(h||('列'+(i+1)))}</option>`)).join('');
+  const rows=CSV_IMPORT_FIELDS.map(f=>`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+      <span style="flex:0 0 110px;font-size:13px;font-weight:600;color:var(--text2)">${f.label}${f.required?'<span style="color:#E30000"> *</span>':''}</span>
+      <select class="form-input" style="flex:1;height:42px;padding:8px 12px" data-fk="${f.key}" onchange="recomputeCsvPreview()">${colOpts(st.mapping[f.key])}</select>
+    </div>`).join('');
+  document.getElementById('csvImportBody').innerHTML=`
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6">CSVの列を、カルテのどの項目に取り込むか対応づけます。自動で推測した内容が入っています。必要なら変えてください。</p>
+    ${rows}
+    <div id="csvImportSummary" style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin:14px 0;font-size:13px;line-height:1.9;color:var(--text2)"></div>
+    <div id="csvImportPreview" style="margin-bottom:6px"></div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeModal('csvImportModal')">キャンセル</button>
+      <button class="btn-save" id="csvImportBtn" onclick="confirmCsvImport()">この内容で取り込む</button>
+    </div>`;
+  recomputeCsvPreview();
+}
+
+// 画面の選択状態から mapping を読み直す
+function readMappingFromUI(){
+  const m={name:-1,kana:-1,phone:-1,email:-1,zip:-1,address:-1,tag:-1,memo:-1};
+  document.querySelectorAll('#csvImportBody select[data-fk]').forEach(sel=>{m[sel.dataset.fk]=parseInt(sel.value,10)});
+  return m;
+}
+
+function recomputeCsvPreview(){
+  const st=csvImportState;if(!st)return;
+  const m=readMappingFromUI();st.mapping=m;
+  const built=buildCustomers(st.dataRows,m);
+  const {toAdd,duplicates}=dedupeAgainst(built.customers,customers);
+  st._toAdd=toAdd;
+  const sum=document.getElementById('csvImportSummary');
+  const btn=document.getElementById('csvImportBtn');
+  if(m.name<0){
+    sum.innerHTML=`<span style="color:#E30000;font-weight:600">「氏名」の列を選んでください。</span>`;
+    if(btn){btn.disabled=true;btn.style.opacity=.5}
+  }else{
+    sum.innerHTML=`✅ 取り込む：<strong style="color:var(--text1)">${toAdd.length}件</strong><br>`+
+      `♻️ 重複でスキップ：${duplicates.length}件（同じ氏名＋電話が既にある）<br>`+
+      `⚠️ 氏名が空でスキップ：${built.skipped}件`;
+    if(btn){btn.disabled=toAdd.length===0;btn.style.opacity=toAdd.length?1:.5}
+  }
+  // プレビュー（先頭3件）
+  const prev=document.getElementById('csvImportPreview');
+  if(toAdd.length){
+    const sample=toAdd.slice(0,3).map(c=>`<div style="font-size:12.5px;color:var(--text3);padding:4px 0;border-top:1px solid var(--border)">
+      <strong style="color:var(--text2)">${esc(c.name)}</strong>${c.phone?' / '+esc(c.phone):''}${c.tag?' / '+esc(c.tag):''}</div>`).join('');
+    prev.innerHTML=`<p style="font-size:11.5px;color:var(--text3);margin-bottom:2px">取り込み例（先頭3件）</p>${sample}`;
+  }else{prev.innerHTML=''}
+}
+
+function confirmCsvImport(){
+  const st=csvImportState;if(!st)return;
+  const m=readMappingFromUI();
+  if(m.name<0){alert('「氏名」の列を選んでください。');return}
+  const toAdd=st._toAdd||dedupeAgainst(buildCustomers(st.dataRows,m).customers,customers).toAdd;
+  if(!toAdd.length){alert('取り込める新規データがありませんでした。');return}
+  // 未定義のタグを自動登録（フィルタに出るように）
+  let newTags=0;
+  toAdd.forEach(c=>{
+    const t=(c.tag||'').trim();
+    if(t&&!tags.some(x=>x.name===t)){tags.push({name:t,colorIdx:tags.length%TAG_COLORS.length});newTags++}
+  });
+  // 顧客オブジェクトを完成させて追加
+  const base=Date.now();
+  toAdd.forEach((c,i)=>{
+    customers.push({
+      id:'imp_'+base+'_'+i,
+      name:c.name,kana:c.kana||'',phone:c.phone||'',email:c.email||'',
+      tag:(c.tag||'').trim(),zip:c.zip||'',address:c.address||'',memo:c.memo||'',
+      customData:{},attachments:[],rezoRecords:[],history:[],followUpDate:'',
+      createdAt:new Date().toISOString()
+    });
+  });
+  if(newTags)saveTags();
+  const ok=saveData();
+  if(!ok){return} // 保存失敗時はsaveData側で警告。UIはそのまま
+  renderTagFilters();renderList();
+  closeModal('csvImportModal');
+  csvImportState=null;
+  showToast(`${toAdd.length}件を取り込みました`);
+}
+
 function exportCSV(){
   const cfCols=customFields.map(f=>f.name);
-  const header=['氏名','フリガナ','タグ','電話番号','メールアドレス','郵便番号','住所',...cfCols,'メモ','登録日','最終対応日'];
+  const header=['氏名','フリガナ','タグ','電話番号','メールアドレス','郵便番号','住所',...cfCols,'メモ','次回連絡予定','登録日','最終対応日'];
   const esc=v=>{v=(v??'').toString();return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const rows=customers.map(c=>{
     const cfVals=customFields.map(f=>(c.customData||{})[f.id]||'');
     const lc=lastContactTime(c);
-    return[c.name,c.kana||'',c.tag||'',c.phone||'',c.email||'',c.zip||'',c.address||'',...cfVals,c.memo||'',formatDate(c.createdAt),lc?formatDate(new Date(lc).toISOString()):''].map(esc).join(',');
+    return[c.name,c.kana||'',c.tag||'',c.phone||'',c.email||'',c.zip||'',c.address||'',...cfVals,c.memo||'',c.followUpDate?fmtRezoDate(c.followUpDate):'',formatDate(c.createdAt),lc?formatDate(new Date(lc).toISOString()):''].map(esc).join(',');
   });
   const csv='\ufeff'+[header.map(esc).join(','),...rows].join('\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
