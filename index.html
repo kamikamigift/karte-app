@@ -333,6 +333,14 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 .fu-done{flex-shrink:0;height:30px;padding:0 13px;border-radius:980px;background:#fff;color:#C2560E;border:1px solid #FBE2CE;font-size:12px;font-family:inherit;font-weight:600;cursor:pointer;transition:background .15s}
 .fu-done:hover{background:#FFF0E4}
 .fu-badge{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:600;padding:1px 8px;border-radius:980px;background:#FFF0EA}
+/* ── 重複顧客の整理 ── */
+.dup-group{background:var(--surface2);border-radius:14px;padding:14px;margin-bottom:14px}
+.dup-group-hd{font-size:12.5px;font-weight:700;color:var(--text2);margin-bottom:10px}
+.dup-member{display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--surface);border-radius:10px;margin-bottom:8px;cursor:pointer;box-shadow:var(--shadow-sm)}
+.dup-member input{margin-top:3px;flex:none;width:18px;height:18px;accent-color:var(--accent)}
+.dup-member-body{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dup-name{font-size:15px;font-weight:600;color:var(--text1)}
+.dup-sub{font-size:12px;color:var(--text3);line-height:1.5}
 </style>
 </head>
 <body>
@@ -531,6 +539,10 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
       </button>
       <input type="file" id="csvImportInput" accept=".csv,text/csv" style="display:none" onchange="onCsvFileSelected(this)">
       <hr class="divider">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600">🔗 重複顧客の整理</p>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">氏名または電話番号が同じ顧客を探して、1件にまとめられます（履歴・リソ・添付・メモは統合されます）。CSV取り込みのあとの重複チェックにも便利です。</p>
+      <button class="btn-add" onclick="openDupMerge()" style="width:100%;background:var(--surface);color:var(--accent);border:1.5px solid var(--accent)">重複を探す</button>
+      <hr class="divider">
       <p style="font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600">🗑️ 顧客の削除</p>
       <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">削除した顧客は履歴・添付ファイルごと完全に消え、元に戻せません。念のため事前のバックアップ保存をおすすめします。</p>
       <div style="display:flex;flex-direction:column;gap:8px">
@@ -551,6 +563,18 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
       <button class="modal-close" onclick="closeModal('csvImportModal')">×</button>
     </div>
     <div id="csvImportBody"></div>
+  </div>
+</div>
+
+<!-- Duplicate Merge Modal -->
+<div class="modal-overlay" id="dupMergeModal" onclick="closeIfOverlay(event,'dupMergeModal')">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title">重複顧客の整理</span>
+      <button class="modal-close" onclick="closeModal('dupMergeModal')">×</button>
+    </div>
+    <div id="dupMergeBody"></div>
+    <div class="form-actions"><button class="btn-cancel" onclick="closeModal('dupMergeModal')" style="flex:1">閉じる</button></div>
   </div>
 </div>
 
@@ -1023,6 +1047,21 @@ function openDetail(id){
 function fmtRezoDate(d){return(d||'').slice(0,10).replace(/-/g,'/')}
 function todayYMD(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 
+/* リソNo.の重複判定：全顧客のrezoRecordsを横断して、同じNo.（全角半角・大小・空白を無視）を
+   持つ別レコードを探す。excludeRecId は編集中の自分自身を除外するため。見つかれば所有者を返す */
+function normRezoNo(s){return csvToHalfWidth(String(s==null?'':s)).replace(/\s+/g,'').toLowerCase()}
+function findRezoNumberOwner(number,excludeRecId){
+  const key=normRezoNo(number);
+  if(!key)return null; // 空欄は重複対象外（何件でもOK）
+  for(const c of customers){
+    for(const r of (c.rezoRecords||[])){
+      if(r.id===excludeRecId)continue;
+      if(normRezoNo(r.number)===key)return{customer:c,record:r};
+    }
+  }
+  return null;
+}
+
 /* 記録内セルに添付(契約書など)を表示する。画像はライトボックス、その他はダウンロード */
 function rezoAttsHTML(atts){
   if(!atts||!atts.length)return'';
@@ -1100,10 +1139,13 @@ function addRezoRecord(customerId){
   const date=g('date').value,content=g('content').value.trim();
   if(!date){showToast('リソ日を入力してください');return}
   if(!content){showToast('内容を入力してください');g('content').focus();return}
+  const number=g('number').value.trim();
+  const owner=findRezoNumberOwner(number,null);
+  if(owner){alert(`⚠️ このNo.「${number}」は既に「${owner.customer.name}」さんの記録で使われています。\n\n別の番号を入力してください。`);g('number').focus();return}
   const idx=customers.findIndex(c=>c.id===customerId);
   if(idx<0)return;
   if(!customers[idx].rezoRecords)customers[idx].rezoRecords=[];
-  customers[idx].rezoRecords.push({id:'rz_'+Date.now(),date,content,staff:g('staff').value.trim(),number:g('number').value.trim(),note:g('note').value.trim(),attachments:[...pendingRezoFiles]});
+  customers[idx].rezoRecords.push({id:'rz_'+Date.now(),date,content,staff:g('staff').value.trim(),number,note:g('note').value.trim(),attachments:[...pendingRezoFiles]});
   // 保存に失敗したら入力欄と添付準備を残す
   if(!saveData())return;
   pendingRezoFiles=[];
@@ -1178,7 +1220,10 @@ function saveRezoEdit(customerId,recId){
   const date=g('date').value,content=g('content').value.trim();
   if(!date){showToast('リソ日を入力してください');return}
   if(!content){showToast('内容を入力してください');g('content').focus();return}
-  r.date=date;r.content=content;r.staff=g('staff').value.trim();r.number=g('number').value.trim();r.note=g('note').value.trim();
+  const number=g('number').value.trim();
+  const owner=findRezoNumberOwner(number,recId);
+  if(owner){alert(`⚠️ このNo.「${number}」は既に「${owner.customer.name}」さんの記録で使われています。\n\n別の番号を入力してください。`);g('number').focus();return}
+  r.date=date;r.content=content;r.staff=g('staff').value.trim();r.number=number;r.note=g('note').value.trim();
   r.attachments=rezoEditAtts[recId]||[];
   // 保存に失敗したら編集モードのまま残す(saveData内でデータは保存済みの状態に巻き戻る)
   if(!saveData())return;
@@ -2104,6 +2149,132 @@ function confirmCsvImport(){
   closeModal('csvImportModal');
   csvImportState=null;
   showToast(`${toAdd.length}件を取り込みました`);
+}
+
+/* ══════════════════════════════════════════════════════════
+   重複顧客の検出・統合
+   検出/統合ロジック（findDuplicateGroups / mergeCustomers）は依存ゼロの純粋関数。
+   ══════════════════════════════════════════════════════════ */
+
+// 氏名の比較キー：空白（半角/全角/NBSP）を全部除去。英字は小文字化
+function normNameKey(name){
+  if(name==null)return'';
+  return String(name).replace(/[\s　 ]+/g,'').toLowerCase();
+}
+// 電話の比較キー：全角数字を半角化してから数字以外を全部除去
+function normPhoneKey(phone){
+  if(phone==null)return'';
+  var s=String(phone),out='';
+  for(var i=0;i<s.length;i++){
+    var ch=s[i];
+    if(ch>='０'&&ch<='９')ch=String.fromCharCode(ch.charCodeAt(0)-0xFEE0);
+    if(ch>='0'&&ch<='9')out+=ch;
+  }
+  return out;
+}
+// 重複グループ検出：氏名キー一致 or 電話キー一致（非空同士）をunion-findで推移的にまとめ、2件以上のグループだけ返す
+function findDuplicateGroups(list){
+  if(!Array.isArray(list)||list.length<2)return[];
+  var n=list.length,parent=new Array(n);
+  for(var i=0;i<n;i++)parent[i]=i;
+  function find(x){while(parent[x]!==x){parent[x]=parent[parent[x]];x=parent[x]}return x}
+  function union(a,b){var ra=find(a),rb=find(b);if(ra!==rb)parent[rb]=ra}
+  var nameMap=Object.create(null),phoneMap=Object.create(null);
+  for(var j=0;j<n;j++){
+    var nk=normNameKey(list[j]&&list[j].name);
+    if(nk!==''){if(nameMap[nk]===undefined)nameMap[nk]=j;else union(nameMap[nk],j)}
+    var pk=normPhoneKey(list[j]&&list[j].phone);
+    if(pk!==''){if(phoneMap[pk]===undefined)phoneMap[pk]=j;else union(phoneMap[pk],j)}
+  }
+  var groupsByRoot=Object.create(null),rootOrder=[];
+  for(var k=0;k<n;k++){var r=find(k);if(groupsByRoot[r]===undefined){groupsByRoot[r]=[];rootOrder.push(r)}groupsByRoot[r].push(list[k])}
+  var result=[];
+  for(var m=0;m<rootOrder.length;m++){var g=groupsByRoot[rootOrder[m]];if(g.length>=2)result.push({group:g,order:m})}
+  result.sort(function(a,b){if(b.group.length!==a.group.length)return b.group.length-a.group.length;return a.order-b.order});
+  return result.map(function(x){return x.group});
+}
+function _isEmptyVal(v){return v===undefined||v===null||v===''}
+function _concatDedupeById(arrays){
+  var seen=Object.create(null),out=[];
+  for(var i=0;i<arrays.length;i++){
+    var arr=arrays[i];if(!Array.isArray(arr))continue;
+    for(var j=0;j<arr.length;j++){
+      var item=arr[j],id=item&&item.id;
+      if(id===undefined||id===null||id==='')out.push(item);
+      else if(!seen[id]){seen[id]=true;out.push(item)}
+    }
+  }
+  return out;
+}
+// 顧客の統合：primaryを土台にothersを吸収した新オブジェクトを返す（引数は不変）
+function mergeCustomers(primary,others){
+  var list=Array.isArray(others)?others:[];
+  var merged=Object.assign({},primary);
+  merged.id=primary.id;
+  var oldest=_isEmptyVal(primary.createdAt)?null:primary.createdAt;
+  for(var i=0;i<list.length;i++){var c=list[i].createdAt;if(_isEmptyVal(c))continue;if(oldest===null||c<oldest)oldest=c}
+  if(oldest!==null)merged.createdAt=oldest;
+  var scalarKeys=['name','kana','phone','email','tag','zip','address','followUpDate'];
+  for(var s=0;s<scalarKeys.length;s++){
+    var key=scalarKeys[s];
+    if(_isEmptyVal(merged[key])){for(var o=0;o<list.length;o++){if(!_isEmptyVal(list[o][key])){merged[key]=list[o][key];break}}}
+  }
+  var memos=[],memoSeen=Object.create(null),allForMemo=[primary].concat(list);
+  for(var mm=0;mm<allForMemo.length;mm++){var memo=allForMemo[mm].memo;if(_isEmptyVal(memo)||memoSeen[memo])continue;memoSeen[memo]=true;memos.push(memo)}
+  merged.memo=memos.join('\n\n');
+  var cd=Object.assign({},primary.customData||{});
+  for(var q=0;q<list.length;q++){var ocd=list[q].customData;if(!ocd)continue;for(var fid in ocd){if(!Object.prototype.hasOwnProperty.call(ocd,fid))continue;if(_isEmptyVal(cd[fid])&&!_isEmptyVal(ocd[fid]))cd[fid]=ocd[fid]}}
+  merged.customData=cd;
+  var arrayKeys=['attachments','rezoRecords','history'];
+  for(var a=0;a<arrayKeys.length;a++){var ak=arrayKeys[a],sources=[primary[ak]];for(var t=0;t<list.length;t++)sources.push(list[t][ak]);merged[ak]=_concatDedupeById(sources)}
+  return merged;
+}
+
+/* ── 重複統合のUI ── */
+let dupGroups=[];
+function openDupMerge(){
+  dupGroups=findDuplicateGroups(customers);
+  renderDupMergeUI();
+  document.getElementById('dupMergeModal').classList.add('open');
+}
+function dupMemberHTML(c,gi,mi){
+  const hist=(c.history||[]).length,rezo=(c.rezoRecords||[]).length,att=(c.attachments||[]).length;
+  const meta=[c.phone?esc(c.phone):'',c.tag?esc(c.tag):''].filter(Boolean).join(' / ');
+  return`<label class="dup-member">
+    <input type="radio" name="dupPrimary-${gi}" value="${c.id}" ${mi===0?'checked':''}>
+    <span class="dup-member-body">
+      <span class="dup-name">${esc(c.name||'（無名）')}</span>
+      <span class="dup-sub">${meta?meta+'　':''}履歴${hist}・リソ${rezo}・添付${att}　登録${formatDate(c.createdAt)}</span>
+    </span>
+  </label>`;
+}
+function renderDupMergeUI(){
+  const el=document.getElementById('dupMergeBody');if(!el)return;
+  if(!dupGroups.length){el.innerHTML=`<p style="font-size:14px;color:var(--text2);padding:8px 0 4px;line-height:1.7">重複の可能性がある顧客は見つかりませんでした。<br><span style="font-size:12px;color:var(--text3)">（氏名または電話番号が一致する顧客を探しました）</span></p>`;return}
+  el.innerHTML=`<p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.7">同じ人かもしれない顧客が <strong style="color:var(--text1)">${dupGroups.length}組</strong> 見つかりました。残す方を選んで「まとめる」を押すと、履歴・リソ・添付・メモが1件に統合されます。</p>`+
+    dupGroups.map((g,gi)=>`<div class="dup-group">
+      <div class="dup-group-hd">候補 ${gi+1}（${g.length}件）— 残す方を選択</div>
+      ${g.map((c,mi)=>dupMemberHTML(c,gi,mi)).join('')}
+      <button class="btn-save" style="height:40px;margin-top:6px;font-size:14px" onclick="doMergeGroup(${gi})">この${g.length}件を1件にまとめる</button>
+    </div>`).join('');
+}
+function doMergeGroup(gi){
+  const g=dupGroups[gi];if(!g)return;
+  const sel=document.querySelector(`input[name="dupPrimary-${gi}"]:checked`);
+  const primaryId=sel?sel.value:g[0].id;
+  const primary=g.find(c=>c.id===primaryId);if(!primary)return;
+  const others=g.filter(c=>c.id!==primaryId);
+  if(!others.length)return;
+  const names=others.map(c=>c.name||'（無名）').join('、');
+  if(!confirm(`「${primary.name}」に、${others.length}件（${names}）の履歴・リソ・添付・メモをまとめます。\n\nまとめた後、元の${others.length}件は削除されます。よろしいですか？`))return;
+  const merged=mergeCustomers(primary,others);
+  const otherIds=new Set(others.map(c=>c.id));
+  customers=customers.map(c=>c.id===primary.id?merged:c).filter(c=>!otherIds.has(c.id));
+  if(!saveData())return;
+  renderTagFilters();renderList();
+  dupGroups=findDuplicateGroups(customers); // 残りを再スキャン
+  renderDupMergeUI();
+  showToast(`${others.length+1}件を1件にまとめました`);
 }
 
 function exportCSV(){
