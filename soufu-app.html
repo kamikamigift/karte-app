@@ -358,6 +358,11 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 <!-- ── Menu ── -->
 <div class="menu-overlay" id="menuOverlay">
   <div class="menu">
+    <div class="menu-item" id="syncBtn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0114-5.3L20 8M20 12a8 8 0 01-14 5.3L4 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 4v4h-4M4 20v-4h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      スマホと同期（設定）
+    </div>
+    <div class="menu-sep"></div>
     <div class="menu-item" id="exportBtn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       バックアップを書き出す
@@ -402,6 +407,17 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
       <button type="button" class="btn-cancel" id="itemsCancel">キャンセル</button>
       <button type="button" class="btn-save" id="itemsSave">保存</button>
     </div>
+  </div>
+</div>
+
+<!-- ── スマホと同期 設定モーダル ── -->
+<div class="modal-overlay" id="syncOverlay">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-header">
+      <div class="modal-title">スマホと同期</div>
+      <button class="modal-close" id="syncClose">✕</button>
+    </div>
+    <div id="syncPane"></div>
   </div>
 </div>
 
@@ -639,7 +655,7 @@ $("#recForm").addEventListener("submit", e=>{
     records.unshift(data);
     toast("登録しました");
   }
-  persist(); render(); closeForm();
+  persist(); render(); closeForm(); scheduleSync();
 });
 function val(id){ const el=$("#"+id); return el ? el.value.trim() : ""; }
 
@@ -650,7 +666,7 @@ $("#deleteBtn").addEventListener("click", ()=>{
   const rec = records.find(r=>r.id===id);
   if(confirm(`「${rec && rec.name ? rec.name : "この記録"}」を削除しますか？\nこの操作は取り消せません。`)){
     records = records.filter(r=>r.id!==id);
-    persist(); render(); closeForm(); toast("削除しました");
+    persist(); render(); closeForm(); scheduleSync(); toast("削除しました");
   }
 });
 
@@ -677,7 +693,7 @@ $("#importFile").addEventListener("change", e=>{
       // id重複を避けて追加、既存idは新規idに
       const existing = new Set(records.map(r=>r.id));
       data.forEach(r=>{ if(!r.id || existing.has(r.id)) r.id = uid(); records.push(r); });
-      persist(); render(); toast(`${data.length} 件を読み込みました`);
+      persist(); render(); scheduleSync(); toast(`${data.length} 件を読み込みました`);
     }catch(err){ alert("読み込めませんでした：" + err.message); }
     e.target.value = "";
   };
@@ -736,7 +752,7 @@ $("#itemsSave").addEventListener("click", ()=>{
   const newSend = readItemRows("editSendList");
   const newRet  = readItemRows("editRetList");
   itemLists = { send:newSend, ret:newRet };
-  persistItems();
+  persistItems(); scheduleSync();
   // 記録フォームが開いていれば、チェック状態を保ったまま作り直す
   if($("#formOverlay").classList.contains("open")){
     const curSend = collectChecks($("#sendList"));
@@ -774,12 +790,256 @@ $("#filters").querySelectorAll(".tag-filter").forEach(b=>{
 });
 document.addEventListener("keydown", e=>{
   if(e.key==="Escape"){
+    if($("#syncOverlay").classList.contains("open")){ $("#syncOverlay").classList.remove("open"); return; }
     if($("#itemsOverlay").classList.contains("open")){ closeItemsEditor(); return; }
     closeForm(); closeMenu();
   }
 });
 
+/* ═══════════ スマホと同期（GitHub・カルテと同じ方式）═══════════ */
+/* 保存先はカルテと同じ karte-data リポジトリの別ファイル。カルテと同じトークンが使える */
+const SYNC_REPO="kamikamigift/karte-data", SYNC_PATH="soufu.enc.json";
+let syncCfg=JSON.parse(localStorage.getItem("soufu_sync")||"null");
+let syncTimer=null, syncBusy=false, applyingRemote=false, lastRemoteCheck=0, syncGen=0, appReady=false;
+function saveSyncCfg(){ localStorage.setItem("soufu_sync", JSON.stringify(syncCfg)); }
+
+function fmtDT(iso){ if(!iso) return ""; const d=new Date(iso); if(isNaN(d)) return ""; const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+
+/* base64 <-> バイト列 */
+function b64enc(buf){ let s=""; const b=new Uint8Array(buf); for(let i=0;i<b.length;i+=0x8000) s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(s); }
+function b64dec(str){ const s=atob(str); const b=new Uint8Array(s.length); for(let i=0;i<s.length;i++) b[i]=s.charCodeAt(i); return b; }
+
+/* 合言葉から暗号鍵（PBKDF2 20万回 → AES-GCM 256bit） */
+async function deriveKey(pass,salt){
+  const km=await crypto.subtle.importKey("raw",new TextEncoder().encode(pass),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:200000,hash:"SHA-256"},km,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+}
+async function encryptPayload(obj,pass){
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await deriveKey(pass,salt);
+  const data=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(JSON.stringify(obj)));
+  return JSON.stringify({v:1,salt:b64enc(salt),iv:b64enc(iv),data:b64enc(data)});
+}
+async function decryptPayload(text,pass){
+  const p=JSON.parse(text);
+  const key=await deriveKey(pass,b64dec(p.salt));
+  const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64dec(p.iv)},key,b64dec(p.data));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+/* GitHub API */
+function ghHeaders(){ return {"Authorization":"token "+syncCfg.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}; }
+async function ghGetFileMeta(){
+  const res=await fetch(`https://api.github.com/repos/${SYNC_REPO}/contents/?t=${Date.now()}`,{headers:ghHeaders(),cache:"no-store"});
+  if(res.status===404) return null;
+  if(!res.ok) throw new Error("repo:"+res.status);
+  const list=await res.json();
+  return Array.isArray(list)?(list.find(f=>f.name===SYNC_PATH)||null):null;
+}
+async function ghGetFileRaw(){
+  const res=await fetch(`https://api.github.com/repos/${SYNC_REPO}/contents/${SYNC_PATH}?t=${Date.now()}`,{headers:{...ghHeaders(),Accept:"application/vnd.github.raw+json"},cache:"no-store"});
+  if(res.status===404) return null;
+  if(!res.ok) throw new Error("get:"+res.status);
+  return res.text();
+}
+async function ghPutFile(content,sha){
+  const body={message:"sync "+new Date().toISOString(),content:btoa(unescape(encodeURIComponent(content)))};
+  if(sha) body.sha=sha;
+  const res=await fetch(`https://api.github.com/repos/${SYNC_REPO}/contents/${SYNC_PATH}`,{method:"PUT",headers:ghHeaders(),body:JSON.stringify(body)});
+  if(res.status===409||res.status===422) throw Object.assign(new Error("conflict:"+res.status),{conflict:true});
+  if(!res.ok) throw new Error("put:"+res.status);
+  return (await res.json()).content.sha;
+}
+
+/* 保存後に呼ばれる。1.5秒待ってからまとめてアップロード */
+function scheduleSync(){
+  if(!syncCfg||applyingRemote) return;
+  syncGen++; syncCfg.pending=true; saveSyncCfg();
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(syncUploadSafe,1500);
+  renderSyncStatus();
+}
+function syncErrMsg(e){
+  if(/:(401|403)\b/.test(e&&e.message||"")) return "⚠️ 同期できませんでした。トークンの期限切れかもしれません。設定で同期を解除し、新しいトークンで入れ直してください（データはこの端末に残っています）";
+  return "⚠️ 同期できませんでした。通信環境を確認してください（データはこの端末に残っています）";
+}
+async function syncUploadSafe(){
+  if(!syncCfg||syncBusy) return;
+  syncBusy=true; renderSyncStatus("☁️ 同期中…");
+  const gen=syncGen;
+  try{ await syncUpload(gen); renderSyncStatus(); }
+  catch(e){ console.warn("sync upload failed",e); renderSyncStatus(syncErrMsg(e)); }
+  syncBusy=false;
+  if(syncGen!==gen) setTimeout(syncUploadSafe,300);
+}
+async function syncUpload(gen){
+  const payload={v:1,exportedAt:new Date().toISOString(),device:syncCfg.deviceName,records,items:itemLists};
+  const text=await encryptPayload(payload,syncCfg.pass);
+  const finish=sha=>{
+    syncCfg.lastSha=sha; syncCfg.lastExportedAt=payload.exportedAt; syncCfg.lastSyncAt=new Date().toISOString();
+    if(syncGen===gen) syncCfg.pending=false;
+    saveSyncCfg();
+  };
+  try{ finish(await ghPutFile(text,syncCfg.lastSha||undefined)); }
+  catch(e){
+    if(!e.conflict) throw e;
+    const meta=await ghGetFileMeta();
+    const remote=meta?await decryptPayload(await ghGetFileRaw(),syncCfg.pass):null;
+    if(remote&&new Date(remote.exportedAt||0)>new Date(syncCfg.lastExportedAt||0)){
+      if(confirm(`他の端末で保存された新しいデータが見つかりました（${fmtDT(remote.exportedAt)} 保存）。\n\nOK：新しい方を取り込む（この端末の直近の変更は消えます）\nキャンセル：この端末の内容で上書きする`)){
+        await applyRemote(remote,meta.sha); return;
+      }
+    }
+    finish(await ghPutFile(text,meta?meta.sha:undefined));
+  }
+}
+/* 入力・編集の途中は自動取り込みを見送る（丸ごと差し替えで入力が消えるのを防ぐ） */
+function isEditingNow(){
+  return $("#formOverlay").classList.contains("open")
+      || $("#itemsOverlay").classList.contains("open");
+}
+async function syncCheckRemote(force,manual){
+  if(!syncCfg) return;
+  if(!manual&&isEditingNow()) return;
+  if(!force&&Date.now()-lastRemoteCheck<30000) return;
+  lastRemoteCheck=Date.now();
+  const meta=await ghGetFileMeta();
+  if(!meta){ if(manual) toast("☁️ クラウドにはまだデータがありません"); return; }
+  if(meta.sha===syncCfg.lastSha){
+    syncCfg.lastSyncAt=new Date().toISOString(); saveSyncCfg(); renderSyncStatus();
+    if(manual) toast("☁️ 最新の状態です");
+    return;
+  }
+  const remote=await decryptPayload(await ghGetFileRaw(),syncCfg.pass);
+  if(syncCfg.pending){
+    if(!confirm(`他の端末で保存された新しいデータがあります（${fmtDT(remote.exportedAt)} 保存）。\n\nOK：取り込む（この端末のまだ同期されていない変更は消えます）\nキャンセル：この端末の内容を優先して上書きする`)){
+      await syncUploadSafe(); return;
+    }
+  }
+  await applyRemote(remote,meta.sha);
+}
+/* リモートのデータをこの端末に反映 */
+async function applyRemote(remote,sha){
+  if(!remote||!Array.isArray(remote.records)) throw new Error("bad remote payload");
+  applyingRemote=true;
+  try{
+    records=remote.records;
+    if(remote.items&&Array.isArray(remote.items.send)&&Array.isArray(remote.items.ret)) itemLists=remote.items;
+    persist(); persistItems();
+  }finally{ applyingRemote=false; }
+  syncCfg.lastSha=sha; syncCfg.lastExportedAt=remote.exportedAt; syncCfg.pending=false; syncCfg.lastSyncAt=new Date().toISOString();
+  saveSyncCfg();
+  closeForm(); closeItemsEditor();
+  render(); renderSyncStatus();
+  toast("☁️ 最新のデータを取り込みました");
+}
+function detectDeviceName(){
+  const ua=navigator.userAgent;
+  if(/iPhone/.test(ua)) return "iPhone";
+  if(/iPad/.test(ua)) return "iPad";
+  if(/Android/.test(ua)) return "Android";
+  if(/Mac/.test(ua)) return "Mac";
+  return "パソコン";
+}
+async function setupSync(){
+  const token=$("#syncToken").value.trim();
+  const pass=$("#syncPass").value;
+  if(!token||!pass){ toast("トークンと合言葉の両方を入力してください"); return; }
+  if(pass.length<8){ toast("合言葉は8文字以上にしてください"); return; }
+  const btn=$("#syncSetupBtn");
+  if(btn){ btn.disabled=true; btn.textContent="確認中…"; }
+  try{
+    syncCfg={token,pass,deviceName:detectDeviceName(),lastSha:null,lastExportedAt:null,pending:false,lastSyncAt:null};
+    const meta=await ghGetFileMeta();
+    if(meta){
+      let remote;
+      try{ remote=await decryptPayload(await ghGetFileRaw(),pass); }
+      catch(e){
+        syncCfg=null;
+        alert("クラウドに保存済みのデータがありますが、合言葉が一致しません。\n最初に設定したときと同じ合言葉を入力してください。");
+        resetSyncSetupBtn(); return;
+      }
+      if(confirm(`クラウドに保存済みのデータが見つかりました。\n・記録 ${(remote.records||[]).length}件\n・保存日時 ${fmtDT(remote.exportedAt)}\n\nOK：クラウドのデータをこの端末に取り込む（おすすめ）\nキャンセル：この端末のデータでクラウドを上書きする`)){
+        saveSyncCfg(); await applyRemote(remote,meta.sha);
+      }else{
+        if(!confirm("本当にこの端末の内容でクラウドを上書きしますか？\nクラウド側の以前のデータはこの端末の内容に置き換わります。")){
+          syncCfg=null; resetSyncSetupBtn(); return;
+        }
+        syncCfg.lastSha=meta.sha; saveSyncCfg(); await syncUploadSafe();
+      }
+    }else{
+      saveSyncCfg(); await syncUploadSafe();
+    }
+    toast("☁️ 同期を設定しました");
+  }catch(e){
+    console.warn("sync setup failed",e);
+    syncCfg=null;
+    alert("同期の設定に失敗しました。\nトークンが正しいか、インターネットに接続しているかを確認してください。");
+  }
+  resetSyncSetupBtn(); renderSyncPane();
+}
+function resetSyncSetupBtn(){ const b=$("#syncSetupBtn"); if(b){ b.disabled=false; b.textContent="同期を開始する"; } }
+async function syncNow(){
+  if(!syncCfg) return;
+  try{
+    if(syncCfg.pending) await syncUploadSafe();
+    await syncCheckRemote(true,true);
+  }catch(e){ console.warn(e); renderSyncStatus(syncErrMsg(e)); }
+}
+function disableSync(){
+  if(!confirm("この端末の同期を解除しますか？\n（クラウド上のデータと他の端末には影響しません。データもこの端末に残ります）")) return;
+  syncCfg=null; localStorage.removeItem("soufu_sync");
+  renderSyncPane(); toast("同期を解除しました");
+}
+/* 設定モーダルの中身 */
+function renderSyncPane(){
+  const w=$("#syncPane");
+  if(!w) return;
+  if(!syncCfg){
+    w.innerHTML=`
+      <p class="hint" style="font-size:15px;color:var(--text2);font-weight:600;margin-bottom:6px">☁️ パソコンとスマホで同じデータを見る</p>
+      <p class="hint" style="margin-bottom:16px">暗号化したデータを非公開の保管庫（GitHub）に自動で預け、もう一方の端末が自動で受け取ります。<strong>両方の端末で同じトークンと合言葉</strong>を入れてください。カルテと同じトークン・合言葉がそのまま使えます。</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
+        <input class="form-input" id="syncToken" type="password" placeholder="アクセストークン（github_pat_… で始まる）" autocomplete="off">
+        <input class="form-input" id="syncPass" type="password" placeholder="合言葉（8文字以上・忘れないもの）" autocomplete="off">
+        <button class="btn-save" id="syncSetupBtn" style="width:100%">同期を開始する</button>
+      </div>
+      <p class="hint">💡 合言葉はデータを読み解く鍵です。カルテと同じ合言葉にしておくと覚えやすいです。トークンと合言葉は安全な場所に控えてください。</p>`;
+    $("#syncSetupBtn").addEventListener("click", setupSync);
+  }else{
+    w.innerHTML=`
+      <p class="hint" style="font-size:15px;color:var(--text2);font-weight:600;margin-bottom:6px">☁️ 同期</p>
+      <p id="syncStatusLine" class="hint" style="margin-bottom:16px"></p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-save" id="syncNowBtn" style="flex:1;min-width:130px">今すぐ同期</button>
+        <button class="btn-cancel" id="syncDisableBtn" style="min-width:150px;flex:1">この端末の同期を解除</button>
+      </div>`;
+    $("#syncNowBtn").addEventListener("click", syncNow);
+    $("#syncDisableBtn").addEventListener("click", disableSync);
+    renderSyncStatus();
+  }
+}
+function renderSyncStatus(msg){
+  const el=$("#syncStatusLine");
+  if(!el||!syncCfg) return;
+  el.innerHTML=msg?esc(msg):
+    `同期：<strong style="color:#1E8E3E">オン</strong>（この端末：${esc(syncCfg.deviceName||"")}）`+
+    `${syncCfg.lastSyncAt?`　最終同期 ${fmtDT(syncCfg.lastSyncAt)}`:""}`+
+    `${syncCfg.pending?'　<span style="color:#c2410c">未同期の変更あり</span>':""}`;
+}
+$("#syncBtn").addEventListener("click", ()=>{ closeMenu(); renderSyncPane(); $("#syncOverlay").classList.add("open"); $("#syncOverlay .modal-box").scrollTop=0; });
+$("#syncClose").addEventListener("click", ()=> $("#syncOverlay").classList.remove("open"));
+$("#syncOverlay").addEventListener("click", e=>{ if(e.target===$("#syncOverlay")) $("#syncOverlay").classList.remove("open"); });
+document.addEventListener("visibilitychange", ()=>{ if(appReady&&document.visibilityState==="visible") syncCheckRemote().catch(()=>{}); });
+async function initSyncFlow(){
+  if(!syncCfg) return;
+  try{ if(syncCfg.pending) await syncUploadSafe(); await syncCheckRemote(true); }
+  catch(e){ console.warn("initial sync failed",e); }
+}
+
 render();
+appReady=true;
+initSyncFlow();
 </script>
 </body>
 </html>
