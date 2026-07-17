@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="送付管理">
+<meta name="theme-color" content="#0071E3">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>予約送付書類管理表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F5F5F7;
+  --surface:#FFFFFF;
+  --surface2:#F5F5F7;
+  --surface3:#E8E8ED;
+  --border:#E8E8ED;--border2:#D2D2D7;
+  --text1:#1D1D1F;--text2:#515154;--text3:#86868B;
+  --accent:#0071E3;--accent2:#0077ED;--accent-bg:#F0F7FF;
+  --green:#34C759;--green-bg:#E9F9EE;
+  --orange:#FF9500;--orange-bg:#FFF4E5;
+  --radius:18px;--radius-sm:12px;
+  --shadow-sm:0 1px 4px rgba(0,0,0,.04);
+  --shadow:0 2px 12px rgba(0,0,0,.06);
+  --shadow-md:0 8px 32px rgba(0,0,0,.10);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text1);min-height:100vh;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+/* ── Header ── */
+.header{background:linear-gradient(135deg,#0071E3,#3395F0);padding:0 max(28px,calc((100vw - 1000px)/2));height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 10px rgba(0,90,180,.28)}
+.logo-wrap{display:flex;flex-direction:column;justify-content:center}
+.logo{font-size:20px;font-weight:700;color:#fff;letter-spacing:-.022em;line-height:1.1;white-space:nowrap}
+.logo-sub{font-size:11px;color:rgba(255,255,255,.72);letter-spacing:.06em;margin-top:2px;font-weight:500;white-space:nowrap}
+.header-right{display:flex;align-items:center;gap:10px}
+.icon-btn{height:38px;width:38px;border:none;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.icon-btn:hover{background:rgba(255,255,255,.28)}
+.btn-primary{height:38px;padding:0 18px;border:none;border-radius:980px;background:#fff;color:var(--accent);font-size:14px;font-family:inherit;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .18s;white-space:nowrap}
+.btn-primary:hover{background:#EAF4FF}
+
+/* ── Toolbar ── */
+.toolbar{padding:40px max(28px,calc((100vw - 1000px)/2)) 8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.search-wrap{flex:1;min-width:220px;position:relative}
+.search-wrap svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
+.search-input{width:100%;height:48px;border:none;border-radius:14px;padding:0 16px 0 46px;font-size:16px;font-family:inherit;background:var(--surface);color:var(--text1);outline:none;transition:box-shadow .2s;box-shadow:var(--shadow-sm)}
+.search-input:focus{box-shadow:0 0 0 4px rgba(0,113,227,.18)}
+.search-input::placeholder{color:var(--text3)}
+.sort-btn{height:48px;padding:0 18px;border:none;border-radius:14px;background:var(--surface);color:var(--text2);font-size:14px;font-family:inherit;cursor:pointer;transition:box-shadow .15s;box-shadow:var(--shadow-sm);font-weight:500}
+.sort-btn:hover{box-shadow:var(--shadow)}
+
+/* ── Stats / filter chips ── */
+.tag-filters{padding:6px max(28px,calc((100vw - 1000px)/2)) 20px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tag-filter{height:32px;padding:0 15px;border-radius:980px;border:none;background:transparent;font-size:13px;font-weight:500;font-family:inherit;color:var(--text2);cursor:pointer;transition:all .15s}
+.tag-filter:hover{background:var(--surface3)}
+.tag-filter.active{background:var(--text1);color:#fff}
+.stat-spacer{flex:1}
+.stat{font-size:13px;color:var(--text3)}
+
+/* ── Cards ── */
+.rec-list{padding:0 max(28px,calc((100vw - 1000px)/2)) 100px;display:flex;flex-direction:column;gap:10px}
+.rec-card{background:var(--surface);border:none;border-radius:var(--radius);padding:15px 22px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:all .22s cubic-bezier(.2,.7,.3,1);box-shadow:var(--shadow-sm)}
+.rec-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.rec-avatar{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;flex-shrink:0;background:var(--accent-bg);color:var(--accent)}
+.rec-info{flex:1;min-width:0}
+.rec-name{font-size:17px;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.014em;color:var(--text1)}
+.rec-name mark{background:rgba(0,113,227,.14);color:var(--text1);border-radius:3px;padding:0 2px}
+.rec-sub{font-size:13px;color:var(--text3);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.rec-sub .no{font-variant-numeric:tabular-nums}
+.rec-badges{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;max-width:220px}
+.badge{display:inline-flex;align-items:center;height:24px;padding:0 11px;border-radius:980px;font-size:11.5px;font-weight:600;letter-spacing:.01em;gap:4px}
+.badge.done{background:var(--green-bg);color:#1E8E3E}
+.badge.wait{background:var(--surface3);color:var(--text3)}
+.badge.method{background:var(--accent-bg);color:var(--accent)}
+.empty{text-align:center;padding:90px 20px;color:var(--text3)}
+.empty svg{opacity:.5}
+.empty p{font-size:15px;margin-top:14px}
+
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:200;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.modal-overlay.open{display:flex}
+@media(min-width:640px){.modal-overlay{align-items:center}}
+.modal-box{background:var(--surface);border-radius:24px 24px 0 0;width:100%;max-width:680px;max-height:94vh;overflow-y:auto;padding:28px 28px 40px;animation:rise .3s cubic-bezier(.2,.7,.3,1)}
+@media(min-width:640px){.modal-box{border-radius:24px;padding:34px 36px 40px}}
+@keyframes rise{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;position:sticky;top:-28px;background:var(--surface);padding-top:6px;z-index:5}
+@media(min-width:640px){.modal-header{top:-34px}}
+.modal-title{font-size:22px;font-weight:700;letter-spacing:-.022em}
+.modal-close{width:34px;height:34px;border:none;background:var(--surface2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:17px;transition:background .15s;flex-shrink:0}
+.modal-close:hover{background:var(--surface3)}
+
+/* ── Section ── */
+.section{margin-bottom:26px}
+.section-title{font-size:13px;font-weight:700;color:var(--accent);letter-spacing:.03em;margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid var(--surface3);display:flex;align-items:center;gap:7px}
+
+/* ── Forms ── */
+.form-field{margin-bottom:16px}
+.form-label{display:block;font-size:12.5px;font-weight:600;color:var(--text2);margin-bottom:7px;letter-spacing:.01em}
+.form-input,.form-select,.form-textarea{width:100%;border:none;border-radius:12px;padding:13px 15px;font-size:16px;font-family:inherit;color:var(--text1);background:var(--surface2);outline:none;transition:all .18s;line-height:1.5}
+.form-input:focus,.form-select:focus,.form-textarea:focus{background:var(--surface);box-shadow:0 0 0 4px rgba(0,113,227,.18)}
+.form-input::placeholder,.form-textarea::placeholder{color:var(--text3)}
+.form-textarea{resize:vertical;min-height:80px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:520px){.form-row-3{grid-template-columns:1fr 1fr}}
+.inline-note{width:100%;border:none;border-bottom:1.5px solid var(--surface3);background:transparent;padding:4px 2px;font-size:14px;font-family:inherit;color:var(--text1);outline:none}
+.inline-note:focus{border-color:var(--accent)}
+
+/* ── Method segmented ── */
+.seg{display:flex;gap:8px}
+.seg label{flex:1}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:flex;align-items:center;justify-content:center;height:46px;border-radius:12px;background:var(--surface2);font-size:15px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s;border:1.5px solid transparent}
+.seg input:checked+span{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
+
+/* ── Checklist ── */
+.check-item{display:flex;align-items:flex-start;gap:12px;padding:11px 13px;border-radius:12px;transition:background .15s;cursor:pointer;margin-bottom:4px}
+.check-item:hover{background:var(--surface2)}
+.check-item.on{background:var(--accent-bg)}
+.check-box{width:23px;height:23px;border-radius:7px;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;margin-top:1px;background:var(--surface)}
+.check-item.on .check-box{background:var(--accent);border-color:var(--accent)}
+.check-box svg{opacity:0;transition:opacity .15s}
+.check-item.on .check-box svg{opacity:1}
+.check-body{flex:1;min-width:0}
+.check-label{font-size:15px;color:var(--text1);font-weight:500}
+.check-note{font-size:12.5px;color:var(--text3);margin-top:2px}
+.sub-check{display:inline-flex;align-items:center;gap:6px;margin-left:14px;font-size:13px;color:var(--text2);cursor:pointer;padding:3px 10px;border-radius:980px;background:var(--surface);border:1.5px solid var(--surface3);transition:all .15s;vertical-align:middle}
+.sub-check.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.check-inline-input{margin-top:6px}
+
+/* ── Toukan block ── */
+.toukan-block{background:var(--surface2);border-radius:14px;padding:16px}
+
+/* ── Actions ── */
+.form-actions{display:flex;gap:12px;margin-top:30px;position:sticky;bottom:0;background:var(--surface);padding:14px 0 4px}
+.btn-cancel{flex:1;height:50px;border:none;border-radius:980px;background:var(--surface2);font-size:15px;font-family:inherit;color:var(--text2);cursor:pointer;transition:background .15s;font-weight:500}
+.btn-cancel:hover{background:var(--surface3)}
+.btn-save{flex:2;height:50px;border:none;border-radius:980px;background:var(--accent);font-size:16px;font-family:inherit;color:#fff;font-weight:600;cursor:pointer;transition:background .18s}
+.btn-save:hover{background:var(--accent2)}
+.btn-delete{width:50px;height:50px;border:none;border-radius:980px;background:var(--surface2);color:#FF3B30;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0}
+.btn-delete:hover{background:#FFE5E3}
+
+/* ── Menu ── */
+.menu-overlay{display:none;position:fixed;inset:0;z-index:150}
+.menu-overlay.open{display:block}
+.menu{position:absolute;top:60px;right:max(28px,calc((100vw - 1000px)/2));background:var(--surface);border-radius:16px;box-shadow:var(--shadow-md);padding:8px;min-width:210px;animation:rise .2s cubic-bezier(.2,.7,.3,1)}
+.menu-item{display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:10px;font-size:14.5px;color:var(--text1);cursor:pointer;transition:background .12s;font-weight:500}
+.menu-item:hover{background:var(--surface2)}
+.menu-item svg{color:var(--text3)}
+.menu-sep{height:1px;background:var(--surface3);margin:6px 8px}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text1);color:#fff;padding:13px 24px;border-radius:980px;font-size:14px;font-weight:500;z-index:400;opacity:0;transition:all .3s;pointer-events:none;box-shadow:var(--shadow-md)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.hint{font-size:12px;color:var(--text3);margin-top:6px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-wrap">
+    <div class="logo">予約送付書類管理表</div>
+    <div class="logo-sub">リソリューション</div>
+  </div>
+  <div class="header-right">
+    <button class="icon-btn" id="menuBtn" title="メニュー" aria-label="メニュー">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="19" r="1.6" fill="currentColor"/></svg>
+    </button>
+    <button class="btn-primary" id="newBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      新規
+    </button>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="search-wrap">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M20 20l-3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    <input type="text" class="search-input" id="search" placeholder="お名前・予約No.で検索">
+  </div>
+  <button class="sort-btn" id="sortBtn">予約日 ↓</button>
+</div>
+
+<div class="tag-filters" id="filters">
+  <button class="tag-filter active" data-filter="all">すべて</button>
+  <button class="tag-filter" data-filter="not_sent">未発送</button>
+  <button class="tag-filter" data-filter="sent">発送済</button>
+  <button class="tag-filter" data-filter="returned">返送済</button>
+  <button class="tag-filter" data-filter="done">投函完了</button>
+  <div class="stat-spacer"></div>
+  <span class="stat" id="count"></span>
+</div>
+
+<div class="rec-list" id="list"></div>
+
+<!-- ── Form Modal ── -->
+<div class="modal-overlay" id="formOverlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="formTitle">新規登録</div>
+      <button class="modal-close" id="formClose">✕</button>
+    </div>
+    <form id="recForm" autocomplete="off">
+      <input type="hidden" id="f_id">
+
+      <!-- お客様情報 -->
+      <div class="section">
+        <div class="section-title">お客様情報</div>
+        <div class="form-field">
+          <label class="form-label">お名前</label>
+          <input type="text" class="form-input" id="f_name" placeholder="山田 花子">
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">フリガナ</label>
+            <input type="text" class="form-input" id="f_kana" placeholder="ヤマダ ハナコ">
+          </div>
+          <div class="form-field">
+            <label class="form-label">予約No.</label>
+            <input type="text" class="form-input" id="f_yoyakuNo" placeholder="JP-0000">
+          </div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">住所</label>
+          <input type="text" class="form-input" id="f_zip" placeholder="〒 000-0000" style="margin-bottom:10px">
+          <input type="text" class="form-input" id="f_address" placeholder="住所">
+        </div>
+        <div class="form-field">
+          <label class="form-label">TEL</label>
+          <input type="tel" class="form-input" id="f_tel" placeholder="000-0000-0000">
+        </div>
+      </div>
+
+      <!-- 日程 -->
+      <div class="section">
+        <div class="section-title">日程・リソリューション</div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">記入日</label>
+            <input type="date" class="form-input" id="f_kinyuubi">
+          </div>
+          <div class="form-field">
+            <label class="form-label">記入者</label>
+            <input type="text" class="form-input" id="f_kinyuusha" placeholder="担当者名">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">予約受付日</label>
+            <input type="date" class="form-input" id="f_uketsukebi">
+          </div>
+          <div class="form-field">
+            <label class="form-label">予約日</label>
+            <input type="date" class="form-input" id="f_yoyakubi">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">予約時間</label>
+            <input type="time" class="form-input" id="f_yoyakuTime">
+          </div>
+          <div class="form-field">
+            <label class="form-label">リソリューション方法</label>
+            <div class="seg">
+              <label><input type="radio" name="method" value="電話"><span>電話</span></label>
+              <label><input type="radio" name="method" value="Zoom"><span>Zoom</span></label>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">書類発送日</label>
+            <input type="date" class="form-input" id="f_housoubi">
+          </div>
+          <div class="form-field">
+            <label class="form-label">書類返送日</label>
+            <input type="date" class="form-input" id="f_hensoubi">
+          </div>
+        </div>
+      </div>
+
+      <!-- 儀師・ご予約内容 -->
+      <div class="section">
+        <div class="section-title">担当・ご予約内容</div>
+        <div class="form-field">
+          <label class="form-label">担当儀師（当日）</label>
+          <input type="text" class="form-input" id="f_gishi" placeholder="担当儀師">
+        </div>
+        <div class="form-field">
+          <label class="form-label">ご予約内容</label>
+          <textarea class="form-textarea" id="f_yoyakuNaiyou" placeholder="ご予約の内容"></textarea>
+        </div>
+      </div>
+
+      <!-- 郵送物（発送時） -->
+      <div class="section">
+        <div class="section-title">郵送物（発送時）</div>
+        <div id="sendList"></div>
+      </div>
+
+      <!-- 郵送物（返送時） -->
+      <div class="section">
+        <div class="section-title">郵送物（返送時）</div>
+        <div id="retList"></div>
+      </div>
+
+      <!-- 発送確認・投函 -->
+      <div class="section">
+        <div class="section-title">最終確認・投函</div>
+        <div class="form-field">
+          <label class="form-label">書類最終確認者</label>
+          <input type="text" class="form-input" id="f_saishu" placeholder="確認者名">
+        </div>
+        <div class="toukan-block">
+          <div class="check-item" id="toukanItem" style="margin-bottom:12px">
+            <div class="check-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 6" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="check-body"><div class="check-label">投函完了</div></div>
+          </div>
+          <div class="form-row">
+            <div class="form-field" style="margin-bottom:0">
+              <label class="form-label">投函日</label>
+              <input type="date" class="form-input" id="f_toukanDate">
+            </div>
+            <div class="form-field" style="margin-bottom:0">
+              <label class="form-label">投函担当</label>
+              <input type="text" class="form-input" id="f_toukanTantou" placeholder="担当者名">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 備考 -->
+      <div class="section" style="margin-bottom:8px">
+        <div class="section-title">備考</div>
+        <div class="form-field" style="margin-bottom:0">
+          <textarea class="form-textarea" id="f_biko" placeholder="メモ・特記事項"></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-delete" id="deleteBtn" title="削除" style="display:none">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0v13a1 1 0 01-1 1H7a1 1 0 01-1-1V7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <button type="button" class="btn-cancel" id="cancelBtn">キャンセル</button>
+        <button type="submit" class="btn-save">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Menu ── -->
+<div class="menu-overlay" id="menuOverlay">
+  <div class="menu">
+    <div class="menu-item" id="exportBtn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      バックアップを書き出す
+    </div>
+    <div class="menu-item" id="importBtn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 21V9m0 0l-4 4m4-4l4 4M5 3h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      バックアップを読み込む
+    </div>
+    <div class="menu-sep"></div>
+    <div class="menu-item" id="printBtn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 9V3h12v6M6 18H4a1 1 0 01-1-1v-5a1 1 0 011-1h16a1 1 0 011 1v5a1 1 0 01-1 1h-2M6 14h12v7H6z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      一覧を印刷
+    </div>
+  </div>
+</div>
+<input type="file" id="importFile" accept="application/json" style="display:none">
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const STORE_KEY = "soufu_records_v1";
+const $ = s => document.querySelector(s);
+
+/* 郵送物の項目定義（紙の管理表そのまま） */
+const SEND_ITEMS = [
+  {key:"aisatsu",  label:"ご挨拶ハガキ", note:"手紙・文章"},
+  {key:"eikyou",   label:"影響一例", input:"eikyouNote", inputPh:"内容"},
+  {key:"ichiran",  label:"リソリューション一覧用紙"},
+  {key:"kiyaku",   label:"リソリューション規約"},
+  {key:"meisaiRei",label:"契約明細書（記入例）"},
+  {key:"meisai",   label:"契約明細書", note:"お客様用1枚 / 会社用1枚 / 複写シート"},
+  {key:"henshinFuutou", label:"返信用封筒 1通", sub:"henshinKitte", subLabel:"切手"},
+];
+const RET_ITEMS = [
+  {key:"kanryouHagaki", label:"リソリューション完了ハガキ"},
+  {key:"meisaiHikae",   label:"契約明細書（お客様控え）"},
+  {key:"kiyakuHikae",   label:"リソリューション規約（お客様控え）"},
+  {key:"yousouFuutou",  label:"郵送封筒", sub:"yousouKitte", subLabel:"切手"},
+];
+
+let records = load();
+let currentFilter = "all";
+let sortKey = "yoyakubi"; // yoyakubi | updated
+let searchTerm = "";
+
+function load(){
+  try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
+  catch(e){ return []; }
+}
+function persist(){ localStorage.setItem(STORE_KEY, JSON.stringify(records)); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function toast(msg){
+  const t = $("#toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove("show"), 2000);
+}
+
+/* ── 表示用ヘルパ ── */
+function fmtMD(d){ if(!d) return ""; const p=d.split("-"); return p.length===3 ? `${+p[1]}/${+p[2]}` : d; }
+function initials(name){
+  if(!name) return "?";
+  return name.trim().charAt(0);
+}
+function esc(s){ return (s||"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function hl(text, term){
+  const e = esc(text);
+  if(!term) return e;
+  try{ return e.replace(new RegExp("("+term.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")","gi"), "<mark>$1</mark>"); }
+  catch(_){ return e; }
+}
+
+/* ── リスト描画 ── */
+function render(){
+  const list = $("#list");
+  let items = records.slice();
+
+  // filter
+  items = items.filter(r=>{
+    if(currentFilter==="not_sent") return !r.housoubi;
+    if(currentFilter==="sent")     return !!r.housoubi && !r.hensoubi;
+    if(currentFilter==="returned") return !!r.hensoubi;
+    if(currentFilter==="done")     return !!r.toukanDone;
+    return true;
+  });
+  // search
+  const term = searchTerm.trim();
+  if(term){
+    const t = term.toLowerCase();
+    items = items.filter(r =>
+      (r.name||"").toLowerCase().includes(t) ||
+      (r.kana||"").toLowerCase().includes(t) ||
+      (r.yoyakuNo||"").toLowerCase().includes(t)
+    );
+  }
+  // sort
+  items.sort((a,b)=>{
+    if(sortKey==="updated") return (b.updatedAt||0)-(a.updatedAt||0);
+    return (b.yoyakubi||"").localeCompare(a.yoyakubi||"");
+  });
+
+  $("#count").textContent = records.length ? `全 ${records.length} 件` : "";
+
+  if(!items.length){
+    list.innerHTML = `<div class="empty">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none"><path d="M9 3h6l1 3H8l1-3zM5 6h14l-1 15H6L5 6z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      <p>${records.length ? "該当する記録がありません" : "まだ記録がありません。「＋新規」から追加できます"}</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = items.map(r=>{
+    const badges = [];
+    if(r.method) badges.push(`<span class="badge method">${esc(r.method)}</span>`);
+    badges.push(r.housoubi ? `<span class="badge done">発送 ${fmtMD(r.housoubi)}</span>` : `<span class="badge wait">未発送</span>`);
+    if(r.hensoubi) badges.push(`<span class="badge done">返送 ${fmtMD(r.hensoubi)}</span>`);
+    if(r.toukanDone) badges.push(`<span class="badge done">✓ 投函</span>`);
+    const sub = [];
+    if(r.yoyakubi) sub.push(`予約 ${fmtMD(r.yoyakubi)}${r.yoyakuTime?" "+r.yoyakuTime:""}`);
+    if(r.yoyakuNo) sub.push(`<span class="no">${esc(r.yoyakuNo)}</span>`);
+    return `<div class="rec-card" data-id="${r.id}">
+      <div class="rec-avatar">${esc(initials(r.name))}</div>
+      <div class="rec-info">
+        <div class="rec-name">${hl(r.name || "（名前未入力）", term)}</div>
+        <div class="rec-sub">${sub.join("<span>·</span>") || "&nbsp;"}</div>
+      </div>
+      <div class="rec-badges">${badges.join("")}</div>
+    </div>`;
+  }).join("");
+
+  list.querySelectorAll(".rec-card").forEach(c=>{
+    c.addEventListener("click", ()=> openForm(c.dataset.id));
+  });
+}
+
+/* ── チェックリスト描画 ── */
+function checkSvg(){ return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 6" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+function buildChecklist(container, defs){
+  container.innerHTML = defs.map(it=>{
+    const noteHtml = it.note ? `<div class="check-note">${esc(it.note)}</div>` : "";
+    const subHtml = it.sub ? `<span class="sub-check" data-sub="${it.sub}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>${esc(it.subLabel)}</span>` : "";
+    const inputHtml = it.input ? `<input type="text" class="inline-note check-inline-input" data-note="${it.input}" placeholder="${esc(it.inputPh||"")}">` : "";
+    return `<div class="check-item" data-key="${it.key}">
+      <div class="check-box">${checkSvg()}</div>
+      <div class="check-body">
+        <div class="check-label">${esc(it.label)} ${subHtml}</div>
+        ${noteHtml}
+        ${inputHtml}
+      </div>
+    </div>`;
+  }).join("");
+
+  // toggle main
+  container.querySelectorAll(".check-item").forEach(item=>{
+    item.addEventListener("click", e=>{
+      if(e.target.closest(".sub-check") || e.target.closest(".check-inline-input")) return;
+      item.classList.toggle("on");
+    });
+  });
+  // toggle sub (切手)
+  container.querySelectorAll(".sub-check").forEach(sc=>{
+    sc.addEventListener("click", e=>{ e.stopPropagation(); sc.classList.toggle("on"); });
+  });
+}
+
+/* ── フォーム開閉 ── */
+function openForm(id){
+  const rec = id ? records.find(r=>r.id===id) : null;
+  $("#formTitle").textContent = rec ? "記録を編集" : "新規登録";
+  $("#deleteBtn").style.display = rec ? "flex" : "none";
+  $("#recForm").reset();
+  buildChecklist($("#sendList"), SEND_ITEMS);
+  buildChecklist($("#retList"), RET_ITEMS);
+  $("#toukanItem").classList.remove("on");
+
+  $("#f_id").value = rec ? rec.id : "";
+  if(rec){
+    setVal("f_name",rec.name); setVal("f_kana",rec.kana); setVal("f_yoyakuNo",rec.yoyakuNo);
+    setVal("f_zip",rec.zip); setVal("f_address",rec.address); setVal("f_tel",rec.tel);
+    setVal("f_kinyuubi",rec.kinyuubi); setVal("f_kinyuusha",rec.kinyuusha);
+    setVal("f_uketsukebi",rec.uketsukebi); setVal("f_yoyakubi",rec.yoyakubi); setVal("f_yoyakuTime",rec.yoyakuTime);
+    setVal("f_housoubi",rec.housoubi); setVal("f_hensoubi",rec.hensoubi);
+    setVal("f_gishi",rec.gishi); setVal("f_yoyakuNaiyou",rec.yoyakuNaiyou);
+    setVal("f_saishu",rec.saishuKakuninsha);
+    setVal("f_toukanDate",rec.toukanDate); setVal("f_toukanTantou",rec.toukanTantou);
+    setVal("f_biko",rec.biko);
+    if(rec.method){ const m=document.querySelector(`input[name=method][value="${rec.method}"]`); if(m) m.checked=true; }
+    if(rec.toukanDone) $("#toukanItem").classList.add("on");
+    applyChecks($("#sendList"), rec.send||{});
+    applyChecks($("#retList"), rec.ret||{});
+  } else {
+    setVal("f_kinyuubi", new Date().toISOString().slice(0,10));
+  }
+  $("#formOverlay").classList.add("open");
+  $(".modal-box").scrollTop = 0;
+}
+function setVal(id,v){ const el=$("#"+id); if(el) el.value = v||""; }
+function applyChecks(container, data){
+  container.querySelectorAll(".check-item").forEach(item=>{
+    const key = item.dataset.key;
+    if(data[key]) item.classList.add("on");
+  });
+  container.querySelectorAll(".sub-check").forEach(sc=>{
+    if(data[sc.dataset.sub]) sc.classList.add("on");
+  });
+  container.querySelectorAll(".check-inline-input").forEach(inp=>{
+    if(data[inp.dataset.note]!=null) inp.value = data[inp.dataset.note];
+  });
+}
+function collectChecks(container){
+  const out = {};
+  container.querySelectorAll(".check-item").forEach(item=> out[item.dataset.key] = item.classList.contains("on"));
+  container.querySelectorAll(".sub-check").forEach(sc=> out[sc.dataset.sub] = sc.classList.contains("on"));
+  container.querySelectorAll(".check-inline-input").forEach(inp=> out[inp.dataset.note] = inp.value.trim());
+  return out;
+}
+function closeForm(){ $("#formOverlay").classList.remove("open"); }
+
+/* ── 保存 ── */
+$("#recForm").addEventListener("submit", e=>{
+  e.preventDefault();
+  const id = $("#f_id").value;
+  const methodEl = document.querySelector("input[name=method]:checked");
+  const data = {
+    name:val("f_name"), kana:val("f_kana"), yoyakuNo:val("f_yoyakuNo"),
+    zip:val("f_zip"), address:val("f_address"), tel:val("f_tel"),
+    kinyuubi:val("f_kinyuubi"), kinyuusha:val("f_kinyuusha"),
+    uketsukebi:val("f_uketsukebi"), yoyakubi:val("f_yoyakubi"), yoyakuTime:val("f_yoyakuTime"),
+    housoubi:val("f_housoubi"), hensoubi:val("f_hensoubi"),
+    method: methodEl ? methodEl.value : "",
+    gishi:val("f_gishi"), yoyakuNaiyou:val("f_yoyakuNaiyou"),
+    saishuKakuninsha:val("f_saishu"),
+    toukanDone: $("#toukanItem").classList.contains("on"),
+    toukanDate:val("f_toukanDate"), toukanTantou:val("f_toukanTantou"),
+    biko:val("f_biko"),
+    send: collectChecks($("#sendList")),
+    ret: collectChecks($("#retList")),
+    updatedAt: Date.now(),
+  };
+  if(id){
+    const i = records.findIndex(r=>r.id===id);
+    records[i] = Object.assign({}, records[i], data);
+    toast("保存しました");
+  } else {
+    data.id = uid(); data.createdAt = Date.now();
+    records.unshift(data);
+    toast("登録しました");
+  }
+  persist(); render(); closeForm();
+});
+function val(id){ const el=$("#"+id); return el ? el.value.trim() : ""; }
+
+/* ── 削除 ── */
+$("#deleteBtn").addEventListener("click", ()=>{
+  const id = $("#f_id").value;
+  if(!id) return;
+  const rec = records.find(r=>r.id===id);
+  if(confirm(`「${rec && rec.name ? rec.name : "この記録"}」を削除しますか？\nこの操作は取り消せません。`)){
+    records = records.filter(r=>r.id!==id);
+    persist(); render(); closeForm(); toast("削除しました");
+  }
+});
+
+/* ── バックアップ ── */
+$("#exportBtn").addEventListener("click", ()=>{
+  closeMenu();
+  const blob = new Blob([JSON.stringify(records,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const d = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `予約送付管理表_バックアップ_${d}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast("バックアップを書き出しました");
+});
+$("#importBtn").addEventListener("click", ()=>{ closeMenu(); $("#importFile").click(); });
+$("#importFile").addEventListener("change", e=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    try{
+      const data = JSON.parse(ev.target.result);
+      if(!Array.isArray(data)) throw new Error("形式が違います");
+      if(!confirm(`${data.length} 件を読み込みます。\n現在のデータに追加しますか？\n（「キャンセル」で中止）`)) return;
+      // id重複を避けて追加、既存idは新規idに
+      const existing = new Set(records.map(r=>r.id));
+      data.forEach(r=>{ if(!r.id || existing.has(r.id)) r.id = uid(); records.push(r); });
+      persist(); render(); toast(`${data.length} 件を読み込みました`);
+    }catch(err){ alert("読み込めませんでした：" + err.message); }
+    e.target.value = "";
+  };
+  reader.readAsText(file);
+});
+$("#printBtn").addEventListener("click", ()=>{ closeMenu(); window.print(); });
+
+/* ── メニュー ── */
+function closeMenu(){ $("#menuOverlay").classList.remove("open"); }
+$("#menuBtn").addEventListener("click", ()=> $("#menuOverlay").classList.add("open"));
+$("#menuOverlay").addEventListener("click", e=>{ if(e.target===$("#menuOverlay")) closeMenu(); });
+
+/* ── その他イベント ── */
+$("#newBtn").addEventListener("click", ()=> openForm(null));
+$("#formClose").addEventListener("click", closeForm);
+$("#cancelBtn").addEventListener("click", closeForm);
+$("#formOverlay").addEventListener("click", e=>{ if(e.target===$("#formOverlay")) closeForm(); });
+$("#search").addEventListener("input", e=>{ searchTerm = e.target.value; render(); });
+$("#sortBtn").addEventListener("click", ()=>{
+  sortKey = sortKey==="yoyakubi" ? "updated" : "yoyakubi";
+  $("#sortBtn").textContent = sortKey==="yoyakubi" ? "予約日 ↓" : "更新順 ↓";
+  render();
+});
+$("#filters").querySelectorAll(".tag-filter").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    $("#filters .tag-filter.active").classList.remove("active");
+    b.classList.add("active"); currentFilter = b.dataset.filter; render();
+  });
+});
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape"){ closeForm(); closeMenu(); }
+});
+
+render();
+</script>
+</body>
+</html>
