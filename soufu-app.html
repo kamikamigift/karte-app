@@ -96,7 +96,7 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 
 /* ── Section ── */
 .section{margin-bottom:26px}
-.section-title{font-size:15px;font-weight:700;color:var(--accent);letter-spacing:.03em;margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid var(--surface3);display:flex;align-items:center;gap:7px}
+.section-title{font-size:18px;font-weight:700;color:var(--accent);letter-spacing:.02em;margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid var(--surface3);display:flex;align-items:center;gap:7px}
 
 /* ── Forms ── */
 .form-field{margin-bottom:16px}
@@ -159,6 +159,16 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 .hint{font-size:13.5px;color:var(--text3);margin-top:6px;line-height:1.5}
+
+/* ── 項目の追加・編集 ── */
+.edit-items-link{margin-top:8px;background:none;border:1.5px dashed var(--border2);color:var(--accent);font-family:inherit;font-size:15px;font-weight:600;padding:11px 14px;border-radius:12px;width:100%;cursor:pointer;transition:background .15s}
+.edit-items-link:hover{background:var(--accent-bg)}
+.item-edit-row{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.item-edit-label{flex:1}
+.item-del-btn{width:48px;height:48px;flex-shrink:0;border:none;border-radius:12px;background:var(--surface2);color:#FF3B30;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.item-del-btn:hover{background:#FFE5E3}
+.add-item-btn{margin-top:4px;width:100%;background:var(--accent-bg);border:none;color:var(--accent);font-family:inherit;font-size:16px;font-weight:600;padding:14px;border-radius:12px;cursor:pointer;transition:background .15s}
+.add-item-btn:hover{background:#E1EFFF}
 </style>
 </head>
 <body>
@@ -192,7 +202,7 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
   <button class="tag-filter" data-filter="not_sent">未発送</button>
   <button class="tag-filter" data-filter="sent">発送済</button>
   <button class="tag-filter" data-filter="returned">返送済</button>
-  <button class="tag-filter" data-filter="done">投函完了</button>
+  <button class="tag-filter" data-filter="done">完了</button>
   <div class="stat-spacer"></div>
   <span class="stat" id="count"></span>
 </div>
@@ -307,36 +317,22 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
       <div class="section">
         <div class="section-title">郵送物（1回目・発送時）</div>
         <div id="sendList"></div>
+        <button type="button" class="edit-items-link">＋ 項目を追加・編集</button>
       </div>
 
       <!-- 郵送物（返送時） -->
       <div class="section">
         <div class="section-title">郵送物（2回目・返送時／お客様控え）</div>
         <div id="retList"></div>
+        <button type="button" class="edit-items-link">＋ 項目を追加・編集</button>
       </div>
 
-      <!-- 発送確認・投函 -->
+      <!-- 最終確認 -->
       <div class="section">
-        <div class="section-title">最終確認・投函</div>
-        <div class="form-field">
+        <div class="section-title">最終確認</div>
+        <div class="form-field" style="margin-bottom:0">
           <label class="form-label">書類最終確認者</label>
           <input type="text" class="form-input" id="f_saishu" placeholder="確認者名">
-        </div>
-        <div class="toukan-block">
-          <div class="check-item" id="toukanItem" style="margin-bottom:12px">
-            <div class="check-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 6" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-            <div class="check-body"><div class="check-label">投函完了</div></div>
-          </div>
-          <div class="form-row">
-            <div class="form-field" style="margin-bottom:0">
-              <label class="form-label">投函日</label>
-              <input type="date" class="form-input" id="f_toukanDate">
-            </div>
-            <div class="form-field" style="margin-bottom:0">
-              <label class="form-label">投函担当</label>
-              <input type="text" class="form-input" id="f_toukanTantou" placeholder="担当者名">
-            </div>
-          </div>
         </div>
       </div>
 
@@ -371,6 +367,11 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
       バックアップを読み込む
     </div>
     <div class="menu-sep"></div>
+    <div class="menu-item" id="editItemsBtn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18 15l3 3-3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0"/></svg>
+      郵送物の項目を編集
+    </div>
+    <div class="menu-sep"></div>
     <div class="menu-item" id="printBtn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 9V3h12v6M6 18H4a1 1 0 01-1-1v-5a1 1 0 011-1h16a1 1 0 011 1v5a1 1 0 01-1 1h-2M6 14h12v7H6z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
       一覧を印刷
@@ -379,6 +380,31 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 </div>
 <input type="file" id="importFile" accept="application/json" style="display:none">
 
+<!-- ── 郵送物の項目 編集モーダル ── -->
+<div class="modal-overlay" id="itemsOverlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">郵送物の項目を編集</div>
+      <button class="modal-close" id="itemsClose">✕</button>
+    </div>
+    <p class="hint" style="margin-bottom:22px;font-size:14.5px">項目の追加・名前の変更・削除ができます。ここで変えた内容は、これから開くすべての記録に反映されます。</p>
+    <div class="section">
+      <div class="section-title">郵送物（1回目・発送時）</div>
+      <div id="editSendList"></div>
+      <button type="button" class="add-item-btn" data-list="send">＋ 項目を追加</button>
+    </div>
+    <div class="section">
+      <div class="section-title">郵送物（2回目・返送時／お客様控え）</div>
+      <div id="editRetList"></div>
+      <button type="button" class="add-item-btn" data-list="ret">＋ 項目を追加</button>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn-cancel" id="itemsCancel">キャンセル</button>
+      <button type="button" class="btn-save" id="itemsSave">保存</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -386,22 +412,29 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 const STORE_KEY = "soufu_records_v1";
 const $ = s => document.querySelector(s);
 
-/* 郵送物の項目定義（紙の管理表そのまま） */
-const SEND_ITEMS = [
-  {key:"aisatsu",  label:"ご挨拶ハガキ", note:"手紙・文章"},
-  {key:"eikyou",   label:"影響一例", input:"eikyouNote", inputPh:"内容"},
-  {key:"ichiran",  label:"リソリューション一覧用紙"},
-  {key:"kiyaku",   label:"リソリューション規約"},
-  {key:"meisaiRei",label:"契約明細書（記入例）"},
-  {key:"meisai",   label:"契約明細書", note:"お客様用1枚 / 会社用1枚 / 複写シート"},
-  {key:"henshinFuutou", label:"返信用封筒 1通", sub:"henshinKitte", subLabel:"切手"},
+/* 郵送物の項目・初期値（紙の管理表そのまま）。ユーザーが編集できる */
+const DEFAULT_SEND_ITEMS = [
+  {id:"aisatsu",  label:"ご挨拶ハガキ", note:"手紙・文章"},
+  {id:"eikyou",   label:"影響一例", input:"eikyouNote", inputPh:"内容"},
+  {id:"ichiran",  label:"リソリューション一覧用紙"},
+  {id:"kiyaku",   label:"リソリューション規約"},
+  {id:"meisaiRei",label:"契約明細書（記入例）"},
+  {id:"meisai",   label:"契約明細書", note:"お客様用1枚 / 会社用1枚 / 複写シート"},
+  {id:"henshinFuutou", label:"返信用封筒 1通", sub:"henshinKitte", subLabel:"切手"},
 ];
-const RET_ITEMS = [
-  {key:"kanryouHagaki", label:"リソリューション完了ハガキ"},
-  {key:"meisaiHikae",   label:"契約明細書（お客様控え）"},
-  {key:"kiyakuHikae",   label:"リソリューション規約（お客様控え）"},
-  {key:"yousouFuutou",  label:"郵送封筒", sub:"yousouKitte", subLabel:"切手"},
+const DEFAULT_RET_ITEMS = [
+  {id:"kanryouHagaki", label:"リソリューション完了ハガキ"},
+  {id:"meisaiHikae",   label:"契約明細書（お客様控え）"},
+  {id:"kiyakuHikae",   label:"リソリューション規約（お客様控え）"},
+  {id:"yousouFuutou",  label:"郵送封筒", sub:"yousouKitte", subLabel:"切手"},
 ];
+const ITEMS_KEY = "soufu_items_v1";
+function loadItems(){
+  try{ const s=JSON.parse(localStorage.getItem(ITEMS_KEY)); if(s && Array.isArray(s.send) && Array.isArray(s.ret)) return s; }catch(e){}
+  return { send: DEFAULT_SEND_ITEMS.map(x=>Object.assign({},x)), ret: DEFAULT_RET_ITEMS.map(x=>Object.assign({},x)) };
+}
+function persistItems(){ localStorage.setItem(ITEMS_KEY, JSON.stringify(itemLists)); }
+let itemLists = loadItems();
 
 let records = load();
 let currentFilter = "all";
@@ -445,7 +478,7 @@ function render(){
     if(currentFilter==="not_sent") return !r.housoubi;
     if(currentFilter==="sent")     return !!r.housoubi && !r.hensoubi;
     if(currentFilter==="returned") return !!r.hensoubi;
-    if(currentFilter==="done")     return !!r.toukanDone;
+    if(currentFilter==="done")     return !!r.housoubi2;
     return true;
   });
   // search
@@ -480,7 +513,6 @@ function render(){
     badges.push(r.housoubi ? `<span class="badge done">発送① ${fmtMD(r.housoubi)}</span>` : `<span class="badge wait">未発送</span>`);
     if(r.hensoubi) badges.push(`<span class="badge done">返送 ${fmtMD(r.hensoubi)}</span>`);
     if(r.housoubi2) badges.push(`<span class="badge done">発送② ${fmtMD(r.housoubi2)}</span>`);
-    if(r.toukanDone) badges.push(`<span class="badge done">✓ 投函</span>`);
     const sub = [];
     if(r.yoyakubi) sub.push(`予約 ${fmtMD(r.yoyakubi)}${r.yoyakuTime?" "+r.yoyakuTime:""}`);
     if(r.yoyakuNo) sub.push(`<span class="no">${esc(r.yoyakuNo)}</span>`);
@@ -506,7 +538,7 @@ function buildChecklist(container, defs){
     const noteHtml = it.note ? `<div class="check-note">${esc(it.note)}</div>` : "";
     const subHtml = it.sub ? `<span class="sub-check" data-sub="${it.sub}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>${esc(it.subLabel)}</span>` : "";
     const inputHtml = it.input ? `<input type="text" class="inline-note check-inline-input" data-note="${it.input}" placeholder="${esc(it.inputPh||"")}">` : "";
-    return `<div class="check-item" data-key="${it.key}">
+    return `<div class="check-item" data-key="${it.id}">
       <div class="check-box">${checkSvg()}</div>
       <div class="check-body">
         <div class="check-label">${esc(it.label)} ${subHtml}</div>
@@ -535,9 +567,8 @@ function openForm(id){
   $("#formTitle").textContent = rec ? "記録を編集" : "新規登録";
   $("#deleteBtn").style.display = rec ? "flex" : "none";
   $("#recForm").reset();
-  buildChecklist($("#sendList"), SEND_ITEMS);
-  buildChecklist($("#retList"), RET_ITEMS);
-  $("#toukanItem").classList.remove("on");
+  buildChecklist($("#sendList"), itemLists.send);
+  buildChecklist($("#retList"), itemLists.ret);
 
   $("#f_id").value = rec ? rec.id : "";
   if(rec){
@@ -548,10 +579,8 @@ function openForm(id){
     setVal("f_housoubi",rec.housoubi); setVal("f_hensoubi",rec.hensoubi); setVal("f_housoubi2",rec.housoubi2);
     setVal("f_gishi",rec.gishi); setVal("f_yoyakuNaiyou",rec.yoyakuNaiyou);
     setVal("f_saishu",rec.saishuKakuninsha);
-    setVal("f_toukanDate",rec.toukanDate); setVal("f_toukanTantou",rec.toukanTantou);
     setVal("f_biko",rec.biko);
     if(rec.method){ const m=document.querySelector(`input[name=method][value="${rec.method}"]`); if(m) m.checked=true; }
-    if(rec.toukanDone) $("#toukanItem").classList.add("on");
     applyChecks($("#sendList"), rec.send||{});
     applyChecks($("#retList"), rec.ret||{});
   } else {
@@ -596,8 +625,6 @@ $("#recForm").addEventListener("submit", e=>{
     method: methodEl ? methodEl.value : "",
     gishi:val("f_gishi"), yoyakuNaiyou:val("f_yoyakuNaiyou"),
     saishuKakuninsha:val("f_saishu"),
-    toukanDone: $("#toukanItem").classList.contains("on"),
-    toukanDate:val("f_toukanDate"), toukanTantou:val("f_toukanTantou"),
     biko:val("f_biko"),
     send: collectChecks($("#sendList")),
     ret: collectChecks($("#retList")),
@@ -658,6 +685,71 @@ $("#importFile").addEventListener("change", e=>{
 });
 $("#printBtn").addEventListener("click", ()=>{ closeMenu(); window.print(); });
 
+/* ── 郵送物の項目 編集 ── */
+function itemRowHtml(id, label){
+  return `<div class="item-edit-row" data-id="${esc(id)}">
+    <input class="form-input item-edit-label" value="${esc(label)}" placeholder="項目名">
+    <button type="button" class="item-del-btn" title="削除">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0v13a1 1 0 01-1 1H7a1 1 0 01-1-1V7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+  </div>`;
+}
+function renderItemRows(containerId, list){
+  $("#"+containerId).innerHTML = list.map(it=>itemRowHtml(it.id, it.label)).join("");
+}
+function openItemsEditor(){
+  closeMenu();
+  renderItemRows("editSendList", itemLists.send);
+  renderItemRows("editRetList", itemLists.ret);
+  $("#itemsOverlay").classList.add("open");
+  $("#itemsOverlay .modal-box").scrollTop = 0;
+}
+function closeItemsEditor(){ $("#itemsOverlay").classList.remove("open"); }
+function readItemRows(containerId){
+  const prev = itemLists.send.concat(itemLists.ret);
+  const out = [];
+  $("#"+containerId).querySelectorAll(".item-edit-row").forEach(r=>{
+    const id = r.dataset.id;
+    const label = r.querySelector(".item-edit-label").value.trim();
+    if(!label) return; // 空の項目は保存しない
+    const existing = prev.find(x=>x.id===id);
+    out.push(existing ? Object.assign({}, existing, {label}) : {id, label});
+  });
+  return out;
+}
+$("#editItemsBtn").addEventListener("click", openItemsEditor);
+$("#itemsClose").addEventListener("click", closeItemsEditor);
+$("#itemsCancel").addEventListener("click", closeItemsEditor);
+document.querySelectorAll(".edit-items-link").forEach(b=> b.addEventListener("click", openItemsEditor));
+$("#itemsOverlay").addEventListener("click", e=>{
+  const del = e.target.closest(".item-del-btn");
+  if(del){ del.closest(".item-edit-row").remove(); return; }
+  const add = e.target.closest(".add-item-btn");
+  if(add){
+    const cid = add.dataset.list==="send" ? "editSendList" : "editRetList";
+    $("#"+cid).insertAdjacentHTML("beforeend", itemRowHtml("c_"+uid(), ""));
+    const rows = $("#"+cid).querySelectorAll(".item-edit-label");
+    rows[rows.length-1].focus();
+  }
+});
+$("#itemsSave").addEventListener("click", ()=>{
+  const newSend = readItemRows("editSendList");
+  const newRet  = readItemRows("editRetList");
+  itemLists = { send:newSend, ret:newRet };
+  persistItems();
+  // 記録フォームが開いていれば、チェック状態を保ったまま作り直す
+  if($("#formOverlay").classList.contains("open")){
+    const curSend = collectChecks($("#sendList"));
+    const curRet  = collectChecks($("#retList"));
+    buildChecklist($("#sendList"), itemLists.send);
+    buildChecklist($("#retList"), itemLists.ret);
+    applyChecks($("#sendList"), curSend);
+    applyChecks($("#retList"), curRet);
+  }
+  closeItemsEditor();
+  toast("項目を保存しました");
+});
+
 /* ── メニュー ── */
 function closeMenu(){ $("#menuOverlay").classList.remove("open"); }
 $("#menuBtn").addEventListener("click", ()=> $("#menuOverlay").classList.add("open"));
@@ -681,7 +773,10 @@ $("#filters").querySelectorAll(".tag-filter").forEach(b=>{
   });
 });
 document.addEventListener("keydown", e=>{
-  if(e.key==="Escape"){ closeForm(); closeMenu(); }
+  if(e.key==="Escape"){
+    if($("#itemsOverlay").classList.contains("open")){ closeItemsEditor(); return; }
+    closeForm(); closeMenu();
+  }
 });
 
 render();
