@@ -108,6 +108,9 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
 @media(max-width:520px){.form-row-3{grid-template-columns:1fr 1fr}}
+/* ラベルが1行/2行で高さが違っても、入力欄を下そろえにしてガタつきを防ぐ */
+.form-row .form-field,.form-row-3 .form-field{display:flex;flex-direction:column}
+.form-row .form-field>:last-child,.form-row-3 .form-field>:last-child{margin-top:auto}
 .inline-note{width:100%;border:none;border-bottom:1.5px solid var(--surface3);background:transparent;padding:5px 2px;font-size:16px;font-family:inherit;color:var(--text1);outline:none}
 .inline-note:focus{border-color:var(--accent)}
 
