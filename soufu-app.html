@@ -110,11 +110,8 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
 .form-input:focus,.form-select:focus,.form-textarea:focus{background:var(--surface);box-shadow:0 0 0 4px rgba(0,113,227,.18)}
 .form-input::placeholder,.form-textarea::placeholder{color:var(--text3)}
 .form-textarea{resize:vertical;min-height:80px}
-.form-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
-.form-row-3{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:14px}
-@media(max-width:520px){.form-row-3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
-/* スマホでは横のズレを避けるため1項目ずつ縦に並べる（iOSの日付入力の中央寄せ挙動対策） */
-@media(max-width:600px){.form-row,.form-row-3{grid-template-columns:1fr}}
+/* すべての欄をお名前欄と同じ全幅に統一（PC・スマホ共通で1列に）。日付入力の中央寄せズレ対策も兼ねる */
+.form-row,.form-row-3{display:grid;grid-template-columns:1fr;gap:14px}
 /* ラベルが1行/2行で高さが違っても、入力欄を下そろえにしてガタつきを防ぐ */
 .form-row .form-field,.form-row-3 .form-field{display:flex;flex-direction:column}
 .form-row .form-field>:last-child,.form-row-3 .form-field>:last-child{margin-top:auto;flex-shrink:0}
@@ -354,7 +351,7 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
       </div>
 
       <!-- 最終確認 -->
-      <div class="section">
+      <div class="section" style="padding-top:16px">
         <div class="section-title">最終確認</div>
         <div class="form-field" style="margin-bottom:0">
           <label class="form-label">書類最終確認者</label>
