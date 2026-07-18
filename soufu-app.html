@@ -193,8 +193,11 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
   .rec-card{padding:13px 16px;gap:12px;flex-wrap:wrap}
   .rec-avatar{width:42px;height:42px;font-size:15px}
   .rec-name{font-size:16.5px}
+  /* タブ4つ（すべて/未発送/発送済/返送済）を1行に収める。件数は右下へ回す */
+  .tag-filter{padding:0 12px}
+  .stat{margin-left:auto}
   /* バッジは名前の下の段へ回し、名前に横幅を使わせる */
-  .rec-badges{flex-basis:100%;max-width:none;margin-left:54px;margin-top:2px;justify-content:flex-start;gap:6px}
+  .rec-badges{flex-basis:100%;max-width:none;margin-left:0;margin-top:2px;justify-content:flex-start;gap:6px}
   .badge{height:24px;padding:0 10px;font-size:12px}
 }
 </style>
@@ -229,7 +232,7 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
   <button class="tag-filter active" data-filter="all">すべて</button>
   <button class="tag-filter" data-filter="not_sent">未発送</button>
   <button class="tag-filter" data-filter="sent">発送済</button>
-  <button class="tag-filter" data-filter="done">完了（返送済）</button>
+  <button class="tag-filter" data-filter="done">返送済</button>
   <div class="stat-spacer"></div>
   <span class="stat" id="count"></span>
 </div>
@@ -551,9 +554,8 @@ function render(){
     if(r.yoyakubi) sub.push(`予約 ${fmtMD(r.yoyakubi)}${r.yoyakuTime?" "+r.yoyakuTime:""}`);
     if(r.yoyakuNo) sub.push(`<span class="no">${esc(r.yoyakuNo)}</span>`);
     return `<div class="rec-card" data-id="${r.id}">
-      <div class="rec-avatar">${esc(initials(r.name))}</div>
       <div class="rec-info">
-        <div class="rec-name">${hl(r.name || "（名前未入力）", term)}</div>
+        <div class="rec-name">${hl(r.name || "（名前未入力）", term)}${r.name ? " 様" : ""}</div>
         <div class="rec-sub">${sub.join("<span>·</span>") || "&nbsp;"}</div>
       </div>
       <div class="rec-badges">${badges.join("")}</div>
