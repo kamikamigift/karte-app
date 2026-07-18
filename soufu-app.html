@@ -91,7 +91,7 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 @keyframes rise{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
 .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;position:sticky;top:-28px;background:var(--surface);padding-top:6px;z-index:5}
 @media(min-width:640px){.modal-header{top:-34px}}
-.modal-title{font-size:25px;font-weight:700;letter-spacing:-.022em}
+.modal-title{font-size:22px;font-weight:700;letter-spacing:-.022em}
 .modal-close{width:34px;height:34px;border:none;background:var(--surface2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:17px;transition:background .15s;flex-shrink:0}
 .modal-close:hover{background:var(--surface3)}
 
@@ -596,7 +596,7 @@ function buildChecklist(container, defs){
 /* ── フォーム開閉 ── */
 function openForm(id){
   const rec = id ? records.find(r=>r.id===id) : null;
-  $("#formTitle").textContent = rec ? "編集" : "新規登録";
+  $("#formTitle").textContent = rec ? "追加・編集" : "新規登録";
   $("#deleteBtn").style.display = rec ? "block" : "none";
   $("#recForm").reset();
   buildChecklist($("#sendList"), itemLists.send);
