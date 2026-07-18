@@ -153,6 +153,9 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
 .btn-save:hover{background:var(--accent2)}
 .btn-delete{width:54px;height:54px;border:none;border-radius:980px;background:var(--surface2);color:#FF3B30;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0}
 .btn-delete:hover{background:#FFE5E3}
+/* 削除は誤タップ防止のため、保存・キャンセルから離して一番下に小さく置く */
+.btn-delete-link{display:block;margin:20px auto 6px;background:none;border:none;color:#FF3B30;font-family:inherit;font-size:14px;font-weight:500;padding:8px 14px;cursor:pointer;border-radius:10px;transition:background .15s}
+.btn-delete-link:hover{background:#FFE5E3}
 
 /* ── Menu ── */
 .menu-overlay{display:none;position:fixed;inset:0;z-index:150}
@@ -226,7 +229,6 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
   <button class="tag-filter active" data-filter="all">すべて</button>
   <button class="tag-filter" data-filter="not_sent">未発送</button>
   <button class="tag-filter" data-filter="sent">発送済</button>
-  <button class="tag-filter" data-filter="returned">返送済</button>
   <button class="tag-filter" data-filter="done">完了</button>
   <div class="stat-spacer"></div>
   <span class="stat" id="count"></span>
@@ -318,21 +320,16 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
             <div class="seg">
               <label><input type="radio" name="method" value="電話"><span>電話</span></label>
               <label><input type="radio" name="method" value="Zoom"><span>Zoom</span></label>
+              <label><input type="radio" name="method" value="対面"><span>対面</span></label>
             </div>
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-field">
-            <label class="form-label">① 書類発送日（1回目）</label>
-            <input type="date" class="form-input" id="f_housoubi">
-          </div>
-          <div class="form-field">
-            <label class="form-label">② 書類返送日（お客様から）</label>
-            <input type="date" class="form-input" id="f_hensoubi">
-          </div>
+        <div class="form-field">
+          <label class="form-label">① 書類発送日（1回目）</label>
+          <input type="date" class="form-input" id="f_housoubi">
         </div>
         <div class="form-field">
-          <label class="form-label">③ 書類発送日（2回目・お客様控え）</label>
+          <label class="form-label">② 書類発送日（2回目・お客様控え）</label>
           <input type="date" class="form-input" id="f_housoubi2">
           <div class="hint">お客様控えを送る発送日。お客様に届いて完了です。</div>
         </div>
@@ -369,10 +366,8 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
         </div>
       </div>
 
+      <button type="button" class="btn-delete-link" id="deleteBtn" style="display:none">この記録を削除</button>
       <div class="form-actions">
-        <button type="button" class="btn-delete" id="deleteBtn" title="削除" style="display:none">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0v13a1 1 0 01-1 1H7a1 1 0 01-1-1V7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </button>
         <button type="button" class="btn-cancel" id="cancelBtn">キャンセル</button>
         <button type="submit" class="btn-save">保存</button>
       </div>
@@ -517,8 +512,7 @@ function render(){
   // filter
   items = items.filter(r=>{
     if(currentFilter==="not_sent") return !r.housoubi;
-    if(currentFilter==="sent")     return !!r.housoubi && !r.hensoubi;
-    if(currentFilter==="returned") return !!r.hensoubi;
+    if(currentFilter==="sent")     return !!r.housoubi && !r.housoubi2;
     if(currentFilter==="done")     return !!r.housoubi2;
     return true;
   });
@@ -552,7 +546,6 @@ function render(){
     const badges = [];
     if(r.method) badges.push(`<span class="badge method">${esc(r.method)}</span>`);
     badges.push(r.housoubi ? `<span class="badge done">発送① ${fmtMD(r.housoubi)}</span>` : `<span class="badge wait">未発送</span>`);
-    if(r.hensoubi) badges.push(`<span class="badge done">返送 ${fmtMD(r.hensoubi)}</span>`);
     if(r.housoubi2) badges.push(`<span class="badge done">発送② ${fmtMD(r.housoubi2)}</span>`);
     const sub = [];
     if(r.yoyakubi) sub.push(`予約 ${fmtMD(r.yoyakubi)}${r.yoyakuTime?" "+r.yoyakuTime:""}`);
@@ -606,7 +599,7 @@ function buildChecklist(container, defs){
 function openForm(id){
   const rec = id ? records.find(r=>r.id===id) : null;
   $("#formTitle").textContent = rec ? "記録を編集" : "新規登録";
-  $("#deleteBtn").style.display = rec ? "flex" : "none";
+  $("#deleteBtn").style.display = rec ? "block" : "none";
   $("#recForm").reset();
   buildChecklist($("#sendList"), itemLists.send);
   buildChecklist($("#retList"), itemLists.ret);
@@ -617,7 +610,7 @@ function openForm(id){
     setVal("f_zip",rec.zip); setVal("f_address",rec.address); setVal("f_tel",rec.tel);
     setVal("f_kinyuubi",rec.kinyuubi); setVal("f_kinyuusha",rec.kinyuusha);
     setVal("f_uketsukebi",rec.uketsukebi); setVal("f_yoyakubi",rec.yoyakubi); setVal("f_yoyakuTime",rec.yoyakuTime);
-    setVal("f_housoubi",rec.housoubi); setVal("f_hensoubi",rec.hensoubi); setVal("f_housoubi2",rec.housoubi2);
+    setVal("f_housoubi",rec.housoubi); setVal("f_housoubi2",rec.housoubi2);
     setVal("f_gishi",rec.gishi); setVal("f_yoyakuNaiyou",rec.yoyakuNaiyou);
     setVal("f_saishu",rec.saishuKakuninsha);
     setVal("f_biko",rec.biko);
@@ -662,7 +655,7 @@ $("#recForm").addEventListener("submit", e=>{
     zip:val("f_zip"), address:val("f_address"), tel:val("f_tel"),
     kinyuubi:val("f_kinyuubi"), kinyuusha:val("f_kinyuusha"),
     uketsukebi:val("f_uketsukebi"), yoyakubi:val("f_yoyakubi"), yoyakuTime:val("f_yoyakuTime"),
-    housoubi:val("f_housoubi"), hensoubi:val("f_hensoubi"), housoubi2:val("f_housoubi2"),
+    housoubi:val("f_housoubi"), housoubi2:val("f_housoubi2"),
     method: methodEl ? methodEl.value : "",
     gishi:val("f_gishi"), yoyakuNaiyou:val("f_yoyakuNaiyou"),
     saishuKakuninsha:val("f_saishu"),
