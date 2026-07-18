@@ -912,9 +912,12 @@ async function syncCheckRemote(force,manual){
   }
   const remote=await decryptPayload(await ghGetFileRaw(),syncCfg.pass);
   if(syncCfg.pending){
-    if(!confirm(`他の端末で保存された新しいデータがあります（${fmtDT(remote.exportedAt)} 保存）。\n\nOK：取り込む（この端末のまだ同期されていない変更は消えます）\nキャンセル：この端末の内容を優先して上書きする`)){
-      await syncUploadSafe(); return;
-    }
+    const localCount=records.length, cloudCount=(remote.records||[]).length;
+    let m=`他の端末で保存された新しいデータがあります（${fmtDT(remote.exportedAt)} 保存）。\n\n`+
+          `　この端末：${localCount}件\n　クラウド：${cloudCount}件\n\n`;
+    if(cloudCount<localCount) m+=`⚠️ 「取り込む」とこの端末の ${localCount}件 が ${cloudCount}件 に減ります。\n\n`;
+    m+=`OK：取り込む（この端末のまだ同期されていない変更は消えます）\nキャンセル：この端末の内容を優先して上書きする`;
+    if(!confirm(m)){ await syncUploadSafe(); return; }
   }
   await applyRemote(remote,meta.sha);
 }
@@ -959,10 +962,21 @@ async function setupSync(){
         alert("クラウドに保存済みのデータがありますが、合言葉が一致しません。\n最初に設定したときと同じ合言葉を入力してください。");
         resetSyncSetupBtn(); return;
       }
-      if(confirm(`クラウドに保存済みのデータが見つかりました。\n・記録 ${(remote.records||[]).length}件\n・保存日時 ${fmtDT(remote.exportedAt)}\n\nOK：クラウドのデータをこの端末に取り込む（おすすめ）\nキャンセル：この端末のデータでクラウドを上書きする`)){
+      const localCount=records.length, cloudCount=(remote.records||[]).length;
+      let msg=`クラウドに保存済みのデータが見つかりました。\n\n`+
+              `　この端末（${syncCfg.deviceName}）：${localCount}件\n`+
+              `　クラウド：${cloudCount}件（保存 ${fmtDT(remote.exportedAt)}）\n\n`;
+      if(cloudCount<localCount){
+        msg+=`⚠️ クラウドの方が少ないです。「取り込む」を選ぶと、この端末の ${localCount}件 が ${cloudCount}件 に置き換わり、差の分は消えます。\nこの端末のデータを残したいなら「キャンセル」を選んでください。\n\n`;
+      }
+      msg+=`OK：クラウドのデータをこの端末に取り込む\nキャンセル：この端末のデータでクラウドを上書きする`;
+      if(confirm(msg)){
+        if(cloudCount<localCount && !confirm(`本当に取り込みますか？\nこの端末の ${localCount}件 が消えて、クラウドの ${cloudCount}件 に置き換わります。`)){
+          syncCfg=null; resetSyncSetupBtn(); return;
+        }
         saveSyncCfg(); await applyRemote(remote,meta.sha);
       }else{
-        if(!confirm("本当にこの端末の内容でクラウドを上書きしますか？\nクラウド側の以前のデータはこの端末の内容に置き換わります。")){
+        if(!confirm(`この端末（${localCount}件）の内容で、クラウド（${cloudCount}件）を上書きします。よろしいですか？\nクラウド側の以前のデータはこの端末の内容に置き換わります。`)){
           syncCfg=null; resetSyncSetupBtn(); return;
         }
         syncCfg.lastSha=meta.sha; saveSyncCfg(); await syncUploadSafe();
