@@ -104,6 +104,8 @@ body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-se
 .form-input,.form-select,.form-textarea{width:100%;min-width:0;border:none;border-radius:12px;padding:14px 16px;font-size:18px;font-family:inherit;color:var(--text1);background:var(--surface2);outline:none;transition:all .18s;line-height:1.5}
 /* iOSで日付/時刻/文字入力の高さが揃わずガタつくのを防ぐ：高さを固定 */
 .form-input,.form-select{height:54px;padding-top:0;padding-bottom:0;line-height:normal}
+/* iOSのネイティブ日付/時刻入力は枠を独自サイズ・値を中央寄せで描画するため、通常のテキスト欄と同じ描画に統一（お名前欄と同じ枠サイズ・左寄せに揃える） */
+input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;-moz-appearance:none;appearance:none}
 .form-input:focus,.form-select:focus,.form-textarea:focus{background:var(--surface);box-shadow:0 0 0 4px rgba(0,113,227,.18)}
 .form-input::placeholder,.form-textarea::placeholder{color:var(--text3)}
 .form-textarea{resize:vertical;min-height:80px}
