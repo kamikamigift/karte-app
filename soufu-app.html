@@ -324,27 +324,27 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
             </div>
           </div>
         </div>
-        <div class="form-field">
-          <label class="form-label">① 書類発送日（1回目）</label>
-          <input type="date" class="form-input" id="f_housoubi">
-        </div>
-        <div class="form-field">
-          <label class="form-label">② 書類発送日（2回目・お客様控え）</label>
-          <input type="date" class="form-input" id="f_housoubi2">
-          <div class="hint">お客様控えを送る発送日。お客様に届いて完了です。</div>
-        </div>
       </div>
 
-      <!-- 郵送物（発送時） -->
+      <!-- 郵送物（1回目・発送時） -->
       <div class="section">
         <div class="section-title">郵送物（1回目・発送時）</div>
+        <div class="form-field">
+          <label class="form-label">発送日</label>
+          <input type="date" class="form-input" id="f_housoubi">
+        </div>
         <div id="sendList"></div>
         <button type="button" class="edit-items-link">＋ 項目を追加・編集</button>
       </div>
 
-      <!-- 郵送物（返送時） -->
+      <!-- 郵送物（2回目・返送時／お客様控え） -->
       <div class="section">
         <div class="section-title">郵送物（2回目・返送時／お客様控え）</div>
+        <div class="form-field">
+          <label class="form-label">発送日</label>
+          <input type="date" class="form-input" id="f_housoubi2">
+          <div class="hint">お客様控えを送る発送日。お客様に届いて完了です。</div>
+        </div>
         <div id="retList"></div>
         <button type="button" class="edit-items-link">＋ 項目を追加・編集</button>
       </div>
