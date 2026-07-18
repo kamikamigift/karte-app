@@ -198,6 +198,9 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
   /* バッジは名前の下の段へ回し、名前に横幅を使わせる */
   .rec-badges{flex-basis:100%;max-width:none;margin-left:0;margin-top:2px;justify-content:flex-start;gap:6px}
   .badge{height:24px;padding:0 10px;font-size:12px}
+  /* 長いチェック項目（例：リソリューション規約（お客様控え））がiPhoneで2行に折り返すのを防ぐため、少し縮める */
+  .check-item{padding:11px 10px;gap:10px}
+  .check-label{font-size:15px}
 }
 </style>
 </head>
@@ -341,7 +344,7 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
 
       <!-- 郵送物（2回目・返送時／お客様控え） -->
       <div class="section" style="padding-top:16px">
-        <div class="section-title">郵送物（2回目・返送時／お客様控え）</div>
+        <div class="section-title">郵送物（2回目・返送時）</div>
         <div class="form-field">
           <label class="form-label">発送日</label>
           <input type="date" class="form-input" id="f_housoubi2">
@@ -416,7 +419,7 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
       <button type="button" class="add-item-btn" data-list="send">＋ 項目を追加</button>
     </div>
     <div class="section">
-      <div class="section-title">郵送物（2回目・返送時／お客様控え）</div>
+      <div class="section-title">郵送物（2回目・返送時）</div>
       <div id="editRetList"></div>
       <button type="button" class="add-item-btn" data-list="ret">＋ 項目を追加</button>
     </div>
