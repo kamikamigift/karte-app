@@ -176,6 +176,8 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
 .edit-items-link:hover{background:var(--accent-bg)}
 .item-edit-row{display:flex;gap:10px;align-items:center;margin-bottom:10px}
 .item-edit-label{flex:1}
+.item-kitte{display:flex;align-items:center;gap:5px;flex-shrink:0;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;user-select:none;white-space:nowrap}
+.item-kitte input{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;margin:0}
 .item-del-btn{width:48px;height:48px;flex-shrink:0;border:none;border-radius:12px;background:var(--surface2);color:#FF3B30;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
 .item-del-btn:hover{background:#FFE5E3}
 .add-item-btn{margin-top:4px;width:100%;background:var(--accent-bg);border:none;color:var(--accent);font-family:inherit;font-size:16px;font-weight:600;padding:14px;border-radius:12px;cursor:pointer;transition:background .15s}
@@ -198,9 +200,10 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
   /* バッジは名前の下の段へ回し、名前に横幅を使わせる */
   .rec-badges{flex-basis:100%;max-width:none;margin-left:0;margin-top:2px;justify-content:flex-start;gap:6px}
   .badge{height:24px;padding:0 10px;font-size:12px}
-  /* 長いチェック項目（例：リソリューション規約（お客様控え））がiPhoneで2行に折り返すのを防ぐため、少し縮める */
-  .check-item{padding:11px 10px;gap:10px}
-  .check-label{font-size:15px}
+  /* 長いチェック項目（例：リソリューション規約（お客様控え））がiPhoneで2行に折り返すのを防ぐ。文字は読みやすい16pxを保ちつつ、余白とチェックボックスを少し詰めて横幅を確保 */
+  .check-item{padding:11px 9px;gap:10px}
+  .check-label{font-size:16px}
+  .check-box{width:24px;height:24px}
 }
 </style>
 </head>
@@ -718,16 +721,17 @@ $("#importFile").addEventListener("change", e=>{
 });
 
 /* ── 郵送物の項目 編集 ── */
-function itemRowHtml(id, label){
+function itemRowHtml(id, label, hasKitte){
   return `<div class="item-edit-row" data-id="${esc(id)}">
     <input class="form-input item-edit-label" value="${esc(label)}" placeholder="項目名">
+    <label class="item-kitte" title="切手のチェック欄を付ける"><input type="checkbox" class="item-kitte-toggle"${hasKitte?" checked":""}>切手</label>
     <button type="button" class="item-del-btn" title="削除">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0v13a1 1 0 01-1 1H7a1 1 0 01-1-1V7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
     </button>
   </div>`;
 }
 function renderItemRows(containerId, list){
-  $("#"+containerId).innerHTML = list.map(it=>itemRowHtml(it.id, it.label)).join("");
+  $("#"+containerId).innerHTML = list.map(it=>itemRowHtml(it.id, it.label, !!it.sub)).join("");
 }
 function openItemsEditor(){
   closeMenu();
@@ -744,8 +748,12 @@ function readItemRows(containerId){
     const id = r.dataset.id;
     const label = r.querySelector(".item-edit-label").value.trim();
     if(!label) return; // 空の項目は保存しない
+    const kitte = !!r.querySelector(".item-kitte-toggle").checked;
     const existing = prev.find(x=>x.id===id);
-    out.push(existing ? Object.assign({}, existing, {label}) : {id, label});
+    const item = existing ? Object.assign({}, existing, {label}) : {id, label};
+    if(kitte){ item.sub = item.sub || (id + "_kitte"); item.subLabel = "切手"; }
+    else { delete item.sub; delete item.subLabel; }
+    out.push(item);
   });
   return out;
 }
