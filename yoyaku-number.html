@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="予約番号">
+<meta name="theme-color" content="#0071E3">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>予約番号発行</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Roboto+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F5F5F7;
+  --surface:#FFFFFF;
+  --surface2:#F5F5F7;
+  --surface3:#E8E8ED;
+  --border:#E8E8ED;--border2:#D2D2D7;
+  --text1:#1D1D1F;--text2:#515154;--text3:#86868B;
+  --accent:#0071E3;--accent2:#0077ED;--accent-bg:#F0F7FF;
+  --green:#34C759;--green-bg:#E9F9EE;
+  --orange:#FF9500;--orange-bg:#FFF4E5;
+  --red:#FF3B30;--red-bg:#FFEEED;
+  --radius:18px;--radius-sm:12px;
+  --shadow-sm:0 1px 4px rgba(0,0,0,.04);
+  --shadow:0 2px 12px rgba(0,0,0,.06);
+  --shadow-md:0 8px 32px rgba(0,0,0,.10);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Inter','Noto Sans JP',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text1);min-height:100vh;font-size:17px;line-height:1.65;-webkit-font-smoothing:antialiased}
+
+/* ── Header ── */
+.header{background:linear-gradient(135deg,#0071E3,#3395F0);padding:0 max(28px,calc((100vw - 760px)/2));height:70px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 10px rgba(0,90,180,.28)}
+.logo-wrap{display:flex;flex-direction:column;justify-content:center;transform:translateY(-2px)}
+.logo{font-size:23px;font-weight:700;color:#fff;letter-spacing:-.022em;line-height:1.1;white-space:nowrap}
+.logo-sub{font-size:12.5px;color:rgba(255,255,255,.72);letter-spacing:.08em;margin-bottom:1px;font-weight:500;white-space:nowrap}
+.header-right{display:flex;align-items:center;gap:8px}
+.hbtn{height:38px;padding:0 15px;border:none;border-radius:980px;background:rgba(255,255,255,.16);color:#fff;font-size:14.5px;font-family:inherit;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .15s;white-space:nowrap}
+.hbtn:hover{background:rgba(255,255,255,.28)}
+
+.wrap{padding:0 max(20px,calc((100vw - 760px)/2))}
+
+/* ── Issue card ── */
+.card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 26px 28px;margin-top:32px}
+@media(max-width:520px){.card{padding:20px 18px 24px;margin-top:20px}}
+.card-title{font-size:15px;font-weight:700;color:var(--accent);letter-spacing:.04em;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+
+/* Big preview */
+.preview{background:linear-gradient(135deg,#0071E3,#3395F0);border-radius:16px;padding:22px 24px;color:#fff;margin-bottom:24px;box-shadow:0 6px 24px rgba(0,90,180,.28)}
+.preview-label{font-size:12.5px;letter-spacing:.1em;font-weight:600;opacity:.85;margin-bottom:8px}
+.preview-num{font-family:'Roboto Mono',monospace;font-weight:700;font-size:clamp(30px,8.5vw,46px);letter-spacing:.04em;line-height:1.1;word-break:break-all}
+.preview-parts{display:flex;flex-wrap:wrap;gap:4px 5px;margin-top:14px}
+.chip{font-family:'Roboto Mono',monospace;font-size:12.5px;font-weight:600;background:rgba(255,255,255,.18);border-radius:7px;padding:4px 9px;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:38px}
+.chip b{font-size:14px;letter-spacing:.03em}
+.chip span{font-size:9.5px;opacity:.8;font-weight:500;letter-spacing:.02em;font-family:'Inter','Noto Sans JP',sans-serif}
+.preview-note{margin-top:14px;font-size:14.5px;font-weight:500;opacity:.95;display:flex;align-items:center;gap:7px}
+
+/* Forms */
+.form-field{margin-bottom:16px}
+.form-label{display:block;font-size:15px;font-weight:600;color:var(--text2);margin-bottom:7px;letter-spacing:.01em}
+.form-input,.form-select{width:100%;min-width:0;border:none;border-radius:12px;padding:0 15px;height:54px;font-size:18px;font-family:inherit;color:var(--text1);background:var(--surface2);outline:none;transition:all .18s;line-height:normal}
+input[type=date].form-input{-webkit-appearance:none;-moz-appearance:none;appearance:none}
+.form-input:focus,.form-select:focus{background:var(--surface);box-shadow:0 0 0 4px rgba(0,113,227,.18)}
+.form-input::placeholder{color:var(--text3)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:520px){.form-row{grid-template-columns:1fr;gap:0}.form-row .form-field{margin-bottom:16px}}
+
+.issue-btn{width:100%;height:56px;border:none;border-radius:14px;background:var(--accent);color:#fff;font-size:18px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .18s,transform .1s;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px}
+.issue-btn:hover{background:var(--accent2)}
+.issue-btn:active{transform:scale(.985)}
+
+/* ── History ── */
+.hist-head{display:flex;align-items:center;justify-content:space-between;margin:38px 0 14px;flex-wrap:wrap;gap:10px}
+.hist-title{font-size:20px;font-weight:700;letter-spacing:-.014em}
+.hist-count{font-size:14px;color:var(--text3)}
+.search-wrap{position:relative;margin-bottom:14px}
+.search-wrap svg{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
+.search-input{width:100%;height:50px;border:none;border-radius:13px;padding:0 15px 0 44px;font-size:16.5px;font-family:inherit;background:var(--surface);color:var(--text1);outline:none;box-shadow:var(--shadow-sm)}
+.search-input:focus{box-shadow:0 0 0 4px rgba(0,113,227,.16)}
+
+.rec-list{display:flex;flex-direction:column;gap:10px;padding-bottom:80px}
+.rec{background:var(--surface);border-radius:15px;box-shadow:var(--shadow-sm);padding:14px 16px;display:flex;align-items:center;gap:14px;transition:box-shadow .18s}
+.rec:hover{box-shadow:var(--shadow)}
+.rec-main{flex:1;min-width:0}
+.rec-num{font-family:'Roboto Mono',monospace;font-weight:700;font-size:20px;letter-spacing:.02em;color:var(--text1);word-break:break-all}
+.rec-num mark{background:rgba(0,113,227,.16);color:var(--text1);border-radius:3px;padding:0 1px}
+.rec-sub{font-size:13.5px;color:var(--text3);margin-top:3px;display:flex;flex-wrap:wrap;gap:3px 12px}
+.rec-sub .nm{color:var(--text2);font-weight:600}
+.rec-actions{display:flex;gap:6px;flex-shrink:0}
+.mini-btn{width:38px;height:38px;border:none;border-radius:10px;background:var(--surface2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.mini-btn:hover{background:var(--surface3)}
+.mini-btn.del:hover{background:var(--red-bg);color:var(--red)}
+.empty{text-align:center;padding:70px 20px;color:var(--text3)}
+.empty svg{opacity:.45}
+.empty p{font-size:16px;margin-top:14px}
+
+/* Toast */
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(30px);background:var(--text1);color:#fff;padding:13px 22px;border-radius:14px;font-size:15.5px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.28);opacity:0;pointer-events:none;transition:all .3s cubic-bezier(.2,.7,.3,1);z-index:400;display:flex;align-items:center;gap:9px}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast svg{flex-shrink:0}
+
+.hint{font-size:13px;color:var(--text3);margin-top:6px;line-height:1.5}
+
+/* ── 同期状態バー ── */
+.syncbar{display:flex;align-items:center;gap:8px;justify-content:center;padding:10px 16px;margin-top:14px;border-radius:12px;font-size:13.5px;font-weight:600;cursor:pointer;transition:background .15s}
+.syncbar.on{background:var(--green-bg);color:#1E8E3E}
+.syncbar.off{background:var(--orange-bg);color:#B25E00}
+.syncbar .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.syncbar.on .dot{background:#34C759}
+.syncbar.off .dot{background:#FF9500}
+
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:300;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.modal-overlay.open{display:flex}
+@media(min-width:640px){.modal-overlay{align-items:center}}
+.modal-box{background:var(--surface);border-radius:24px 24px 0 0;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;padding:26px 24px 34px;animation:rise .3s cubic-bezier(.2,.7,.3,1)}
+@media(min-width:640px){.modal-box{border-radius:24px;padding:30px 30px 34px}}
+@keyframes rise{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-title{font-size:21px;font-weight:700;letter-spacing:-.02em}
+.modal-close{width:34px;height:34px;border:none;background:var(--surface2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:16px;transition:background .15s;flex-shrink:0}
+.modal-close:hover{background:var(--surface3)}
+.btn-save{height:52px;border:none;border-radius:13px;background:var(--accent);color:#fff;font-size:16.5px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .18s}
+.btn-save:hover{background:var(--accent2)}
+.btn-save:disabled{opacity:.6;cursor:default}
+.btn-cancel{height:52px;border:none;border-radius:13px;background:var(--surface2);color:var(--text2);font-size:16.5px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .18s}
+.btn-cancel:hover{background:var(--surface3)}
+.bulk-textarea{width:100%;min-height:150px;border:none;border-radius:12px;padding:14px 15px;font-size:16px;font-family:'Roboto Mono',monospace;line-height:1.7;color:var(--text1);background:var(--surface2);outline:none;resize:vertical}
+.bulk-textarea:focus{background:var(--surface);box-shadow:0 0 0 4px rgba(0,113,227,.18)}
+.bulk-result{margin:14px 0 0;font-size:14.5px;line-height:1.8}
+.bulk-result .ok{color:#1E8E3E;font-weight:700}
+.bulk-result .warn{color:#B25E00;font-weight:600}
+.bulk-sample{max-height:180px;overflow:auto;background:var(--surface2);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12.5px;font-family:'Roboto Mono',monospace;line-height:1.7;color:var(--text2)}
+code{font-family:'Roboto Mono',monospace;background:var(--surface3);padding:1px 5px;border-radius:5px;font-size:.92em}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-wrap">
+    <div class="logo-sub">RESERVATION NUMBER</div>
+    <div class="logo">予約番号発行</div>
+  </div>
+  <div class="header-right">
+    <button class="hbtn" id="syncBtn" title="スマホと同期・保存先の設定">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+      同期
+    </button>
+    <button class="hbtn" id="menuBtn" title="バックアップ">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="19" r="1.4"/></svg>
+    </button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- Issue card -->
+  <div class="card">
+    <div class="card-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      新しい予約番号を発行
+    </div>
+
+    <div class="preview">
+      <div class="preview-label">発行される番号</div>
+      <div class="preview-num" id="pvNum">JP260700001</div>
+      <div class="preview-parts" id="pvParts"></div>
+      <div class="preview-note" id="pvNote"></div>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="fDate">予約が入った日</label>
+      <input type="date" id="fDate" class="form-input">
+    </div>
+
+    <div class="form-row">
+      <div class="form-field">
+        <label class="form-label" for="fCountry">国・地域</label>
+        <select id="fCountry" class="form-select"></select>
+      </div>
+      <div class="form-field">
+        <label class="form-label" for="fPref">都道府県</label>
+        <select id="fPref" class="form-select"></select>
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="fName">お客様名（任意・控え用）</label>
+      <input type="text" id="fName" class="form-input" placeholder="例）山田 花子" autocomplete="off">
+      <div class="hint">※ 番号には入りません。あとで「誰の番号か」を見分けるための控えです。</div>
+    </div>
+
+    <button class="issue-btn" id="issueBtn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      この番号を発行して保存
+    </button>
+  </div>
+
+  <!-- 同期状態バー -->
+  <div class="syncbar off" id="syncBar"></div>
+
+  <!-- History -->
+  <div class="hist-head">
+    <div class="hist-title">発行済みの番号</div>
+    <div class="hist-count" id="histCount"></div>
+  </div>
+  <div class="search-wrap">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="search" class="search-input" placeholder="番号・お名前・都道府県で検索">
+  </div>
+  <div class="rec-list" id="recList"></div>
+
+</div>
+
+<!-- 同期モーダル -->
+<div class="modal-overlay" id="syncOverlay">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title">保存とスマホ同期</div>
+      <button class="modal-close" id="syncClose">✕</button>
+    </div>
+    <div id="syncPane"></div>
+  </div>
+</div>
+
+<!-- バックアップ・メニュー -->
+<div class="modal-overlay" id="menuOverlay">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title">データの管理</div>
+      <button class="modal-close" id="menuClose">✕</button>
+    </div>
+    <p class="hint" style="margin-bottom:16px">過去に発行した番号の取り込みや、手元へのバックアップができます。</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn-save" id="bulkOpenBtn">過去の番号をまとめて取り込む</button>
+      <button class="btn-cancel" id="exportBtn">この端末の履歴をファイルに書き出す</button>
+      <button class="btn-cancel" id="importBtn">ファイル（JSON）から履歴を読み込む</button>
+    </div>
+  </div>
+</div>
+
+<!-- 過去番号のまとめ取り込み -->
+<div class="modal-overlay" id="bulkOverlay">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title">過去の番号をまとめて取り込む</div>
+      <button class="modal-close" id="bulkClose">✕</button>
+    </div>
+    <p class="hint" style="margin-bottom:12px">これまで手作業で発行してきた番号を、<strong>1行に1件</strong>ずつ貼り付けてください。番号のうしろにお名前を付けてもかまいません（例：<code>JP250728003 山田</code>）。全角の番号（<code>ＪＰ２５…</code>）でも大丈夫です。</p>
+    <textarea id="bulkText" class="bulk-textarea" placeholder="JP250728001 山田&#10;JP250728002 佐藤&#10;JP250813001 田中&#10;…"></textarea>
+    <div id="bulkResult"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
+      <button class="btn-cancel" id="bulkParseBtn">内容を確認する</button>
+      <button class="btn-save" id="bulkAddBtn" hidden>取り込む</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== データ ===== */
+const COUNTRIES=[
+  ["JP","日本"],
+  ["IS","アイスランド共和国"],["IE","アイルランド"],["AZ","アゼルバイジャン共和国"],["AF","アフガニスタン・イスラム共和国"],
+  ["US","アメリカ合衆国"],["AE","アラブ首長国連邦"],["DZ","アルジェリア民主人民共和国"],["AR","アルゼンチン共和国"],
+  ["AL","アルバニア共和国"],["AM","アルメニア共和国"],["AO","アンゴラ共和国"],["AG","アンティグア・バーブーダ"],
+  ["AD","アンドラ公国"],["YE","イエメン共和国"],["IL","イスラエル国"],["IT","イタリア共和国"],["IQ","イラク共和国"],
+  ["IR","イラン・イスラム共和国"],["IN","インド"],["ID","インドネシア共和国"],["UG","ウガンダ共和国"],["UA","ウクライナ"],
+  ["UZ","ウズベキスタン共和国"],["UY","ウルグアイ東方共和国"],["GB","英国（グレートブリテン及び北アイルランド連合王国）"],
+  ["EC","エクアドル共和国"],["EG","エジプト・アラブ共和国"],["EE","エストニア共和国"],["SZ","エスワティニ王国"],
+  ["ET","エチオピア連邦民主共和国"],["ER","エリトリア国"],["SV","エルサルバドル共和国"],["AU","オーストラリア連邦"],
+  ["AT","オーストリア共和国"],["OM","オマーン国"],["NL","オランダ王国"],["GH","ガーナ共和国"],["CV","カーボベルデ共和国"],
+  ["GY","ガイアナ共和国"],["KZ","カザフスタン共和国"],["QA","カタール国"],["CA","カナダ"],["GA","ガボン共和国"],
+  ["CM","カメルーン共和国"],["GM","ガンビア共和国"],["KH","カンボジア王国"],["MK","北マケドニア共和国"],["GN","ギニア共和国"],
+  ["GW","ギニアビサウ共和国"],["CY","キプロス共和国"],["CU","キューバ共和国"],["GR","ギリシャ共和国"],["KI","キリバス共和国"],
+  ["KG","キルギス共和国"],["GT","グアテマラ共和国"],["KW","クウェート国"],["CK","クック諸島"],["GD","グレナダ"],
+  ["HR","クロアチア共和国"],["KE","ケニア共和国"],["CI","コートジボワール共和国"],["CR","コスタリカ共和国"],["KM","コモロ連合"],
+  ["CO","コロンビア共和国"],["CG","コンゴ共和国"],["CD","コンゴ民主共和国"],["SA","サウジアラビア王国"],["WS","サモア独立国"],
+  ["ST","サントメ・プリンシペ民主共和国"],["ZM","ザンビア共和国"],["SM","サンマリノ共和国"],["SL","シエラレオネ共和国"],
+  ["DJ","ジブチ共和国"],["JM","ジャマイカ"],["GE","ジョージア"],["SY","シリア・アラブ共和国"],["SG","シンガポール共和国"],
+  ["ZW","ジンバブエ共和国"],["CH","スイス連邦"],["SE","スウェーデン王国"],["SD","スーダン共和国"],["ES","スペイン王国"],
+  ["SR","スリナム共和国"],["LK","スリランカ民主社会主義共和国"],["SK","スロバキア共和国"],["SI","スロベニア共和国"],
+  ["SC","セーシェル共和国"],["GQ","赤道ギニア共和国"],["SN","セネガル共和国"],["RS","セルビア共和国"],
+  ["KN","セントクリストファー・ネービス"],["VC","セントビンセント及びグレナディーン諸島"],["LC","セントルシア"],
+  ["SO","ソマリア連邦共和国"],["SB","ソロモン諸島"],["TH","タイ王国"],["KR","大韓民国"],["TW","台湾"],["TJ","タジキスタン共和国"],
+  ["TZ","タンザニア連合共和国"],["CZ","チェコ共和国"],["TD","チャド共和国"],["CF","中央アフリカ共和国"],["CN","中華人民共和国"],
+  ["TN","チュニジア共和国"],["KP","北朝鮮"],["CL","チリ共和国"],["TV","ツバル"],["DK","デンマーク王国"],["DE","ドイツ連邦共和国"],
+  ["TG","トーゴ共和国"],["DO","ドミニカ共和国"],["DM","ドミニカ国"],["TT","トリニダード・トバゴ共和国"],["TM","トルクメニスタン"],
+  ["TR","トルコ共和国"],["TO","トンガ王国"],["NG","ナイジェリア連邦共和国"],["NR","ナウル共和国"],["NA","ナミビア共和国"],
+  ["NU","ニウエ"],["NI","ニカラグア共和国"],["NE","ニジェール共和国"],["NZ","ニュージーランド"],["NP","ネパール連邦民主共和国"],
+  ["NO","ノルウェー王国"],["BH","バーレーン王国"],["HT","ハイチ共和国"],["PK","パキスタン・イスラム共和国"],["VA","バチカン"],
+  ["PA","パナマ共和国"],["VU","バヌアツ共和国"],["BS","バハマ国"],["PG","パプアニューギニア独立国"],["PW","パラオ共和国"],
+  ["PY","パラグアイ共和国"],["BB","バルバドス"],["PS","パレスチナ"],["HU","ハンガリー"],["BD","バングラデシュ人民共和国"],
+  ["TL","東ティモール民主共和国"],["FJ","フィジー共和国"],["PH","フィリピン共和国"],["FI","フィンランド共和国"],["BT","ブータン王国"],
+  ["BR","ブラジル連邦共和国"],["FR","フランス共和国"],["BG","ブルガリア共和国"],["BF","ブルキナファソ"],["BN","ブルネイ・ダルサラーム国"],
+  ["BI","ブルンジ共和国"],["VN","ベトナム社会主義共和国"],["BJ","ベナン共和国"],["VE","ベネズエラ・ボリバル共和国"],["BY","ベラルーシ共和国"],
+  ["BZ","ベリーズ"],["PE","ペルー共和国"],["BE","ベルギー王国"],["PL","ポーランド共和国"],["BA","ボスニア・ヘルツェゴビナ"],
+  ["BW","ボツワナ共和国"],["BO","ボリビア多民族国"],["PT","ポルトガル共和国"],["HK","香港"],["HN","ホンジュラス共和国"],
+  ["MH","マーシャル諸島共和国"],["MO","マカオ"],["MG","マダガスカル共和国"],["MW","マラウイ共和国"],["ML","マリ共和国"],
+  ["MT","マルタ共和国"],["MY","マレーシア"],["FM","ミクロネシア連邦"],["ZA","南アフリカ共和国"],["SS","南スーダン共和国"],
+  ["MM","ミャンマー連邦共和国"],["MX","メキシコ合衆国"],["MU","モーリシャス共和国"],["MR","モーリタニア・イスラム共和国"],
+  ["MZ","モザンビーク共和国"],["MC","モナコ公国"],["MV","モルディブ共和国"],["MD","モルドバ共和国"],["MA","モロッコ王国"],
+  ["MN","モンゴル国"],["ME","モンテネグロ"],["JO","ヨルダン"],["LA","ラオス人民民主共和国"],["LV","ラトビア共和国"],
+  ["LT","リトアニア共和国"],["LY","リビア"],["LI","リヒテンシュタイン公国"],["LR","リベリア共和国"],["RO","ルーマニア"],
+  ["LU","ルクセンブルク大公国"],["RW","ルワンダ共和国"],["LS","レソト王国"],["LB","レバノン共和国"],["RU","ロシア連邦"]
+];
+
+const PREFS=[
+  ["01","北海道"],["02","青森県"],["03","岩手県"],["04","宮城県"],["05","秋田県"],["06","山形県"],["07","福島県"],
+  ["08","茨城県"],["09","栃木県"],["10","群馬県"],["11","埼玉県"],["12","千葉県"],["13","東京都"],["14","神奈川県"],
+  ["15","新潟県"],["16","富山県"],["17","石川県"],["18","福井県"],["19","山梨県"],["20","長野県"],["21","岐阜県"],
+  ["22","静岡県"],["23","愛知県"],["24","三重県"],["25","滋賀県"],["26","京都府"],["27","大阪府"],["28","兵庫県"],
+  ["29","奈良県"],["30","和歌山県"],["31","鳥取県"],["32","島根県"],["33","岡山県"],["34","広島県"],["35","山口県"],
+  ["36","徳島県"],["37","香川県"],["38","愛媛県"],["39","高知県"],["40","福岡県"],["41","佐賀県"],["42","長崎県"],
+  ["43","熊本県"],["44","大分県"],["45","宮崎県"],["46","鹿児島県"],["47","沖縄県"],
+  ["00","該当なし（海外など）"]
+];
+
+const STORE_KEY='yoyaku-number-records-v1';
+
+/* ===== 状態 ===== */
+let records=load();
+
+function load(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||[]}catch(e){return[]}}
+function save(){localStorage.setItem(STORE_KEY,JSON.stringify(records))}
+
+const countryName=c=>{const f=COUNTRIES.find(x=>x[0]===c);return f?f[1]:c};
+const prefName=p=>{const f=PREFS.find(x=>x[0]===p);return f?f[1]:p};
+const pad3=n=>String(n).padStart(3,'0');
+
+/* 予約日 → 年下2桁・月2桁 */
+function ymFromDate(str){
+  // str: YYYY-MM-DD
+  const [y,m]=str.split('-');
+  return {yy:y.slice(-2), mm:m, year4:y, month:parseInt(m,10)};
+}
+
+/* 同じ 国×年×月×都道府県 の中で次の連番 */
+function nextSeq(country,yy,mm,pref){
+  let max=0;
+  for(const r of records){
+    if(r.country===country && r.yy===yy && r.mm===mm && r.pref===pref){
+      if(r.seq>max) max=r.seq;
+    }
+  }
+  return max+1;
+}
+
+/* ===== 画面ロード ===== */
+function initSelects(){
+  const cSel=document.getElementById('fCountry');
+  cSel.innerHTML=COUNTRIES.map(([c,n])=>`<option value="${c}">${c}　${n}</option>`).join('');
+  cSel.value='JP';
+  const pSel=document.getElementById('fPref');
+  pSel.innerHTML=PREFS.map(([c,n])=>`<option value="${c}">${c==='00'?'':c+'　'}${n}</option>`).join('');
+  pSel.value='28'; // 兵庫県を初期値（例に合わせて）。すぐ変更可
+}
+
+function todayStr(){
+  const d=new Date();
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+
+/* ===== プレビュー更新 ===== */
+function currentForm(){
+  const dateStr=document.getElementById('fDate').value||todayStr();
+  const {yy,mm,year4,month}=ymFromDate(dateStr);
+  const country=document.getElementById('fCountry').value;
+  const pref=document.getElementById('fPref').value;
+  const seq=nextSeq(country,yy,mm,pref);
+  return {dateStr,yy,mm,year4,month,country,pref,seq};
+}
+
+function updatePreview(){
+  const f=currentForm();
+  const num=`${f.country}${f.yy}${f.mm}${f.pref}${pad3(f.seq)}`;
+  document.getElementById('pvNum').textContent=num;
+  document.getElementById('pvParts').innerHTML=[
+    ['国',f.country],['年',f.yy],['月',f.mm],['県',f.pref],['連番',pad3(f.seq)]
+  ].map(([lbl,v])=>`<span class="chip"><b>${v}</b><span>${lbl}</span></span>`).join('');
+  const where = f.pref==='00' ? countryName(f.country) : prefName(f.pref);
+  document.getElementById('pvNote').innerHTML=
+    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`+
+    `${f.year4}年${f.month}月・${where}で <b style="font-size:17px">${f.seq}</b>人目`;
+}
+
+/* ===== 発行 ===== */
+function issue(){
+  const f=currentForm();
+  const name=document.getElementById('fName').value.trim();
+  const num=`${f.country}${f.yy}${f.mm}${f.pref}${pad3(f.seq)}`;
+  records.push({
+    id:Date.now()+'-'+Math.random().toString(36).slice(2,7),
+    number:num, country:f.country, pref:f.pref,
+    yy:f.yy, mm:f.mm, year4:f.year4, month:f.month,
+    seq:f.seq, name, reserveDate:f.dateStr, issuedAt:new Date().toISOString()
+  });
+  save();
+  scheduleSync();
+  copyText(num);
+  document.getElementById('fName').value='';
+  render();
+  updatePreview();
+  showToast(`発行しました → ${num}（コピー済み）`);
+}
+
+/* ===== 履歴描画 ===== */
+function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function hl(text,q){
+  if(!q) return escapeHtml(text);
+  const i=text.toLowerCase().indexOf(q.toLowerCase());
+  if(i<0) return escapeHtml(text);
+  return escapeHtml(text.slice(0,i))+'<mark>'+escapeHtml(text.slice(i,i+q.length))+'</mark>'+escapeHtml(text.slice(i+q.length));
+}
+
+function render(){
+  const q=document.getElementById('search').value.trim();
+  const list=document.getElementById('recList');
+  let items=[...records].sort((a,b)=>b.issuedAt<a.issuedAt?-1:1);
+  if(q){
+    const qq=q.toLowerCase();
+    items=items.filter(r=>
+      r.number.toLowerCase().includes(qq)||
+      (r.name&&r.name.toLowerCase().includes(qq))||
+      prefName(r.pref).includes(q)||
+      countryName(r.country).includes(q)
+    );
+  }
+  document.getElementById('histCount').textContent=`全 ${records.length} 件`+(q?`／該当 ${items.length} 件`:'');
+  if(items.length===0){
+    list.innerHTML=`<div class="empty">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+      <p>${records.length===0?'まだ番号を発行していません':'該当する番号がありません'}</p></div>`;
+    return;
+  }
+  list.innerHTML=items.map(r=>{
+    const where = r.pref==='00' ? countryName(r.country) : prefName(r.pref);
+    return `<div class="rec">
+      <div class="rec-main">
+        <div class="rec-num">${hl(r.number,q)}</div>
+        <div class="rec-sub">
+          ${r.name?`<span class="nm">${hl(r.name,q)}</span>`:''}
+          <span>${where}</span>
+          <span>${r.year4}年${r.month}月・${r.seq}人目</span>
+        </div>
+      </div>
+      <div class="rec-actions">
+        <button class="mini-btn" title="番号をコピー" onclick="copyRec('${r.id}')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+        <button class="mini-btn del" title="削除" onclick="delRec('${r.id}')">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function copyRec(id){const r=records.find(x=>x.id===id);if(r){copyText(r.number);showToast(`コピーしました → ${r.number}`);}}
+function delRec(id){
+  const r=records.find(x=>x.id===id);
+  if(!r) return;
+  if(!confirm(`この番号を削除しますか？\n\n${r.number}${r.name?'（'+r.name+'）':''}\n\n※ 削除すると、この後の同じ月・同じ都道府県の連番が1つ詰まります。`)) return;
+  records=records.filter(x=>x.id!==id);
+  save();scheduleSync();render();updatePreview();
+  showToast('削除しました');
+}
+
+/* ===== コピー・トースト ===== */
+function copyText(t){
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).catch(()=>fallbackCopy(t));}
+  else fallbackCopy(t);
+}
+function fallbackCopy(t){
+  const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(ta);
+}
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.innerHTML=`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>${escapeHtml(msg)}`;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+/* ===== バックアップ ===== */
+function exportData(){
+  const blob=new Blob([JSON.stringify(records,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const d=new Date();const p=n=>String(n).padStart(2,'0');
+  a.href=url;a.download=`予約番号バックアップ_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}.json`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  closeModal('menuOverlay');
+  showToast('バックアップを書き出しました');
+}
+function importData(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!Array.isArray(data)) throw 0;
+      if(!confirm(`このバックアップ（${data.length}件）を読み込みます。\n現在のデータ（${records.length}件）は置き換わります。よろしいですか？`)) return;
+      records=data;save();scheduleSync();render();updatePreview();
+      closeModal('menuOverlay');
+      showToast(`${data.length}件を読み込みました`);
+    }catch(err){alert('読み込めませんでした。正しいバックアップファイルか確認してください。');}
+  };
+  reader.readAsText(file);
+}
+
+/* ===== 過去番号のまとめ取り込み ===== */
+/* 全角英数字を半角に */
+function toHalf(s){ return s.replace(/[Ａ-Ｚａ-ｚ０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)); }
+/* 貼り付けテキストを解析。各行「2文字＋9桁」を番号として拾い、残りをお名前に */
+function parseBulk(text){
+  const ok=[], bad=[];
+  for(const line of text.split(/\r?\n/)){
+    const raw=line.trim();
+    if(!raw) continue;
+    const norm=toHalf(raw);
+    const m=norm.match(/[A-Za-z]{2}\d{9}/);
+    if(!m){ bad.push(raw); continue; }
+    const code=m[0].toUpperCase();
+    const mm=code.slice(4,6), mi=parseInt(mm,10), seq=parseInt(code.slice(8,11),10);
+    if(mi<1||mi>12){ bad.push(raw); continue; }
+    const name=norm.replace(m[0],'').replace(/[,、\t]+/g,' ').trim();
+    ok.push({ number:code, country:code.slice(0,2), yy:code.slice(2,4), mm,
+      pref:code.slice(6,8), seq, year4:'20'+code.slice(2,4), month:mi, name });
+  }
+  return {ok,bad};
+}
+let bulkParsed=null;
+function bulkPreview(){
+  const {ok,bad}=parseBulk(document.getElementById('bulkText').value);
+  const seen=new Set(records.map(r=>r.number));
+  const toAdd=[], dup=[];
+  for(const r of ok){ if(seen.has(r.number)) dup.push(r); else { seen.add(r.number); toAdd.push(r); } }
+  bulkParsed=toAdd;
+  let html='<div class="bulk-result">';
+  html+=`<div class="ok">✓ 取り込める番号：${toAdd.length}件</div>`;
+  if(dup.length) html+=`<div class="warn">・すでに登録済みでスキップ：${dup.length}件</div>`;
+  if(bad.length) html+=`<div class="warn">・形式が読み取れずスキップ：${bad.length}件</div>`;
+  html+='</div>';
+  if(toAdd.length){
+    const s=toAdd.slice(0,8).map(r=>`${r.number}　${r.year4}年${r.month}月・${r.pref==='00'?countryName(r.country):prefName(r.pref)}・${r.seq}人目${r.name?'　'+escapeHtml(r.name):''}`).join('<br>');
+    html+=`<div class="bulk-sample">${s}${toAdd.length>8?'<br>… ほか '+(toAdd.length-8)+'件':''}</div>`;
+  }
+  if(bad.length){
+    html+='<div class="hint" style="margin-top:10px">読み取れなかった行（形式をご確認ください）：</div>'+
+      `<div class="bulk-sample">${bad.slice(0,6).map(escapeHtml).join('<br>')}${bad.length>6?'<br>…':''}</div>`;
+  }
+  document.getElementById('bulkResult').innerHTML=html;
+  const addBtn=document.getElementById('bulkAddBtn');
+  addBtn.hidden = toAdd.length===0;
+  addBtn.textContent = `この ${toAdd.length}件 を取り込む`;
+}
+function bulkCommit(){
+  if(!bulkParsed||!bulkParsed.length) return;
+  const now=Date.now();
+  bulkParsed.forEach((r,i)=>{
+    records.push({
+      id:(now+i)+'-'+Math.random().toString(36).slice(2,7),
+      number:r.number, country:r.country, pref:r.pref, yy:r.yy, mm:r.mm,
+      year4:r.year4, month:r.month, seq:r.seq, name:r.name||'',
+      reserveDate:`${r.year4}-${r.mm}-01`,
+      issuedAt:new Date(`${r.year4}-${r.mm}-01T00:00:00`).toISOString(),
+      imported:true
+    });
+  });
+  const n=bulkParsed.length; bulkParsed=null;
+  save(); scheduleSync();
+  document.getElementById('bulkText').value='';
+  document.getElementById('bulkResult').innerHTML='';
+  document.getElementById('bulkAddBtn').hidden=true;
+  closeModal('bulkOverlay'); closeModal('menuOverlay');
+  render(); updatePreview();
+  showToast(`過去の番号 ${n}件 を取り込みました`);
+}
+
+/* ═══════════ スマホと同期（GitHub・カルテ／送付アプリと同じ方式）═══════════ */
+/* 保存先はカルテと同じ karte-data リポジトリの別ファイル。カルテと同じトークン・合言葉が使える */
+const $=s=>document.querySelector(s);
+const esc=escapeHtml, toast=showToast;
+const SYNC_REPO="kamikamigift/karte-data", SYNC_PATH="yoyaku.enc.json";
+let syncCfg=JSON.parse(localStorage.getItem("yoyaku_sync")||"null");
+let syncTimer=null, syncBusy=false, applyingRemote=false, lastRemoteCheck=0, syncGen=0, appReady=false;
+function saveSyncCfg(){ localStorage.setItem("yoyaku_sync", JSON.stringify(syncCfg)); renderSyncBar(); }
+
+function fmtDT(iso){ if(!iso) return ""; const d=new Date(iso); if(isNaN(d)) return ""; const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+
+/* base64 <-> バイト列 */
+function b64enc(buf){ let s=""; const b=new Uint8Array(buf); for(let i=0;i<b.length;i+=0x8000) s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(s); }
+function b64dec(str){ const s=atob(str); const b=new Uint8Array(s.length); for(let i=0;i<s.length;i++) b[i]=s.charCodeAt(i); return b; }
+
+/* 合言葉から暗号鍵（PBKDF2 20万回 → AES-GCM 256bit） */
+async function deriveKey(pass,salt){
+  const km=await crypto.subtle.importKey("raw",new TextEncoder().encode(pass),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:200000,hash:"SHA-256"},km,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+}
+async function encryptPayload(obj,pass){
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await deriveKey(pass,salt);
+  const data=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(JSON.stringify(obj)));
+  return JSON.stringify({v:1,salt:b64enc(salt),iv:b64enc(iv),data:b64enc(data)});
+}
+async function decryptPayload(text,pass){
+  const p=JSON.parse(text);
+  const key=await deriveKey(pass,b64dec(p.salt));
+  const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64dec(p.iv)},key,b64dec(p.data));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+/* GitHub API */
+function ghHeaders(){ return {"Authorization":"token "+syncCfg.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}; }
+async function ghGetFileMeta(){
+  const res=await fetch(`https://api.github.com/repos/${SYNC_REPO}/contents/?t=${Date.now()}`,{headers:ghHeaders(),cache:"no-store"});
+  if(res.status===404) return null;
+  if(!res.ok) throw new Error("repo:"+res.status);
+  const list=await res.json();
+  return Array.isArray(list)?(list.find(f=>f.name===SYNC_PATH)||null):null;
+}
+async function ghGetFileRaw(){
+  const res=await fetch(`https://api.github.com/repos/${SYNC_REPO}/contents/${SYNC_PATH}?t=${Date.now()}`,{headers:{...ghHeaders(),Accept:"application/vnd.github.raw+json"},cache:"no-store"});
+  if(res.status===404) return null;
+  if(!res.ok) throw new Error("get:"+res.status);
+  return res.text();
+}
+async function ghPutFile(content,sha){
+  const body={message:"sync "+new Date().toISOString(),content:btoa(unescape(encodeURIComponent(content)))};
+  if(sha) body.sha=sha;
+  const res=await fetch(`https://api.github.com/repos/${SYNC_REPO}/contents/${SYNC_PATH}`,{method:"PUT",headers:ghHeaders(),body:JSON.stringify(body)});
+  if(res.status===409||res.status===422) throw Object.assign(new Error("conflict:"+res.status),{conflict:true});
+  if(!res.ok) throw new Error("put:"+res.status);
+  return (await res.json()).content.sha;
+}
+
+/* 保存後に呼ばれる。1.5秒待ってからまとめてアップロード */
+function scheduleSync(){
+  if(!syncCfg||applyingRemote) return;
+  syncGen++; syncCfg.pending=true; saveSyncCfg();
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(syncUploadSafe,1500);
+}
+function syncErrMsg(e){
+  if(/:(401|403)\b/.test(e&&e.message||"")) return "⚠️ 同期できませんでした。トークンの期限切れかもしれません。設定で同期を解除し、新しいトークンで入れ直してください（データはこの端末に残っています）";
+  return "⚠️ 同期できませんでした。通信環境を確認してください（データはこの端末に残っています）";
+}
+async function syncUploadSafe(){
+  if(!syncCfg||syncBusy) return;
+  syncBusy=true; renderSyncStatus("☁️ 同期中…");
+  const gen=syncGen;
+  try{ await syncUpload(gen); renderSyncStatus(); }
+  catch(e){ console.warn("sync upload failed",e); renderSyncStatus(syncErrMsg(e)); }
+  syncBusy=false;
+  if(syncGen!==gen) setTimeout(syncUploadSafe,300);
+}
+async function syncUpload(gen){
+  const payload={v:1,exportedAt:new Date().toISOString(),device:syncCfg.deviceName,records};
+  const text=await encryptPayload(payload,syncCfg.pass);
+  const finish=sha=>{
+    syncCfg.lastSha=sha; syncCfg.lastExportedAt=payload.exportedAt; syncCfg.lastSyncAt=new Date().toISOString();
+    if(syncGen===gen) syncCfg.pending=false;
+    saveSyncCfg();
+  };
+  try{ finish(await ghPutFile(text,syncCfg.lastSha||undefined)); }
+  catch(e){
+    if(!e.conflict) throw e;
+    const meta=await ghGetFileMeta();
+    const remote=meta?await decryptPayload(await ghGetFileRaw(),syncCfg.pass):null;
+    if(remote&&new Date(remote.exportedAt||0)>new Date(syncCfg.lastExportedAt||0)){
+      if(confirm(`他の端末で保存された新しいデータが見つかりました（${fmtDT(remote.exportedAt)} 保存）。\n\nOK：新しい方を取り込む（この端末の直近の変更は消えます）\nキャンセル：この端末の内容で上書きする`)){
+        await applyRemote(remote,meta.sha); return;
+      }
+    }
+    finish(await ghPutFile(text,meta?meta.sha:undefined));
+  }
+}
+async function syncCheckRemote(force,manual){
+  if(!syncCfg) return;
+  if(!force&&Date.now()-lastRemoteCheck<30000) return;
+  lastRemoteCheck=Date.now();
+  const meta=await ghGetFileMeta();
+  if(!meta){ if(manual) toast("☁️ クラウドにはまだデータがありません"); return; }
+  if(meta.sha===syncCfg.lastSha){
+    syncCfg.lastSyncAt=new Date().toISOString(); saveSyncCfg(); renderSyncStatus();
+    if(manual) toast("☁️ 最新の状態です");
+    return;
+  }
+  const remote=await decryptPayload(await ghGetFileRaw(),syncCfg.pass);
+  if(syncCfg.pending){
+    const localCount=records.length, cloudCount=(remote.records||[]).length;
+    let m=`他の端末で保存された新しいデータがあります（${fmtDT(remote.exportedAt)} 保存）。\n\n`+
+          `　この端末：${localCount}件\n　クラウド：${cloudCount}件\n\n`;
+    if(cloudCount<localCount) m+=`⚠️ 「取り込む」とこの端末の ${localCount}件 が ${cloudCount}件 に減ります。\n\n`;
+    m+=`OK：取り込む（この端末のまだ同期されていない変更は消えます）\nキャンセル：この端末の内容を優先して上書きする`;
+    if(!confirm(m)){ await syncUploadSafe(); return; }
+  }
+  await applyRemote(remote,meta.sha);
+}
+/* リモートのデータをこの端末に反映 */
+async function applyRemote(remote,sha){
+  if(!remote||!Array.isArray(remote.records)) throw new Error("bad remote payload");
+  applyingRemote=true;
+  try{ records=remote.records; save(); }finally{ applyingRemote=false; }
+  syncCfg.lastSha=sha; syncCfg.lastExportedAt=remote.exportedAt; syncCfg.pending=false; syncCfg.lastSyncAt=new Date().toISOString();
+  saveSyncCfg();
+  render(); updatePreview();
+  toast("☁️ 最新のデータを取り込みました");
+}
+function detectDeviceName(){
+  const ua=navigator.userAgent;
+  if(/iPhone/.test(ua)) return "iPhone";
+  if(/iPad/.test(ua)) return "iPad";
+  if(/Android/.test(ua)) return "Android";
+  if(/Mac/.test(ua)) return "Mac";
+  return "パソコン";
+}
+async function setupSync(){
+  const token=$("#syncToken").value.trim();
+  const pass=$("#syncPass").value;
+  if(!token||!pass){ toast("トークンと合言葉の両方を入力してください"); return; }
+  if(pass.length<8){ toast("合言葉は8文字以上にしてください"); return; }
+  const btn=$("#syncSetupBtn");
+  if(btn){ btn.disabled=true; btn.textContent="確認中…"; }
+  try{
+    syncCfg={token,pass,deviceName:detectDeviceName(),lastSha:null,lastExportedAt:null,pending:false,lastSyncAt:null};
+    const meta=await ghGetFileMeta();
+    if(meta){
+      let remote;
+      try{ remote=await decryptPayload(await ghGetFileRaw(),pass); }
+      catch(e){
+        syncCfg=null;
+        alert("クラウドに保存済みのデータがありますが、合言葉が一致しません。\n最初に設定したときと同じ合言葉を入力してください。");
+        resetSyncSetupBtn(); return;
+      }
+      const localCount=records.length, cloudCount=(remote.records||[]).length;
+      let msg=`クラウドに保存済みのデータが見つかりました。\n\n`+
+              `　この端末（${syncCfg.deviceName}）：${localCount}件\n`+
+              `　クラウド：${cloudCount}件（保存 ${fmtDT(remote.exportedAt)}）\n\n`;
+      if(cloudCount<localCount){
+        msg+=`⚠️ クラウドの方が少ないです。「取り込む」を選ぶと、この端末の ${localCount}件 が ${cloudCount}件 に置き換わり、差の分は消えます。\nこの端末のデータを残したいなら「キャンセル」を選んでください。\n\n`;
+      }
+      msg+=`OK：クラウドのデータをこの端末に取り込む\nキャンセル：この端末のデータでクラウドを上書きする`;
+      if(confirm(msg)){
+        if(cloudCount<localCount && !confirm(`本当に取り込みますか？\nこの端末の ${localCount}件 が消えて、クラウドの ${cloudCount}件 に置き換わります。`)){
+          syncCfg=null; resetSyncSetupBtn(); return;
+        }
+        saveSyncCfg(); await applyRemote(remote,meta.sha);
+      }else{
+        if(!confirm(`この端末（${localCount}件）の内容で、クラウド（${cloudCount}件）を上書きします。よろしいですか？\nクラウド側の以前のデータはこの端末の内容に置き換わります。`)){
+          syncCfg=null; resetSyncSetupBtn(); return;
+        }
+        syncCfg.lastSha=meta.sha; saveSyncCfg(); await syncUploadSafe();
+      }
+    }else{
+      saveSyncCfg(); await syncUploadSafe();
+    }
+    toast("☁️ 同期を設定しました");
+  }catch(e){
+    console.warn("sync setup failed",e);
+    syncCfg=null;
+    alert("同期の設定に失敗しました。\nトークンが正しいか、インターネットに接続しているかを確認してください。");
+  }
+  resetSyncSetupBtn(); renderSyncPane();
+}
+function resetSyncSetupBtn(){ const b=$("#syncSetupBtn"); if(b){ b.disabled=false; b.textContent="同期を開始する"; } }
+async function syncNow(){
+  if(!syncCfg) return;
+  try{
+    if(syncCfg.pending) await syncUploadSafe();
+    await syncCheckRemote(true,true);
+  }catch(e){ console.warn(e); renderSyncStatus(syncErrMsg(e)); }
+}
+function disableSync(){
+  if(!confirm("この端末の同期を解除しますか？\n（クラウド上のデータと他の端末には影響しません。データもこの端末に残ります）")) return;
+  syncCfg=null; localStorage.removeItem("yoyaku_sync");
+  renderSyncPane(); renderSyncBar(); toast("同期を解除しました");
+}
+/* 設定モーダルの中身 */
+function renderSyncPane(){
+  const w=$("#syncPane");
+  if(!w) return;
+  if(!syncCfg){
+    w.innerHTML=`
+      <p class="hint" style="font-size:15px;color:var(--text2);font-weight:600;margin-bottom:6px">☁️ パソコンとスマホで同じデータを見る</p>
+      <p class="hint" style="margin-bottom:16px">発行した番号を暗号化して、非公開の保管庫（GitHub）に自動で預けます。この端末だけに閉じ込めず、もう一方の端末でも同じ番号・連番が使えます。<strong>両方の端末で同じトークンと合言葉</strong>を入れてください。カルテと同じトークン・合言葉がそのまま使えます。</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
+        <input class="form-input" id="syncToken" type="password" placeholder="アクセストークン（github_pat_… で始まる）" autocomplete="off">
+        <input class="form-input" id="syncPass" type="password" placeholder="合言葉（8文字以上・忘れないもの）" autocomplete="off">
+        <button class="btn-save" id="syncSetupBtn" style="width:100%">同期を開始する</button>
+      </div>
+      <p class="hint">💡 合言葉はデータを読み解く鍵です。カルテと同じ合言葉にしておくと覚えやすいです。トークンと合言葉は安全な場所に控えてください。</p>`;
+    $("#syncSetupBtn").addEventListener("click", setupSync);
+  }else{
+    w.innerHTML=`
+      <p class="hint" style="font-size:15px;color:var(--text2);font-weight:600;margin-bottom:6px">☁️ 同期</p>
+      <p id="syncStatusLine" class="hint" style="margin-bottom:16px"></p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-save" id="syncNowBtn" style="flex:1;min-width:130px">今すぐ同期</button>
+        <button class="btn-cancel" id="syncDisableBtn" style="min-width:150px;flex:1">この端末の同期を解除</button>
+      </div>`;
+    $("#syncNowBtn").addEventListener("click", syncNow);
+    $("#syncDisableBtn").addEventListener("click", disableSync);
+    renderSyncStatus();
+  }
+}
+function renderSyncStatus(msg){
+  const el=$("#syncStatusLine");
+  if(!el||!syncCfg) return;
+  el.innerHTML=msg?esc(msg):
+    `同期：<strong style="color:#1E8E3E">オン</strong>（この端末：${esc(syncCfg.deviceName||"")}）`+
+    `${syncCfg.lastSyncAt?`　最終同期 ${fmtDT(syncCfg.lastSyncAt)}`:""}`+
+    `${syncCfg.pending?'　<span style="color:#c2410c">未同期の変更あり</span>':""}`;
+}
+/* ページ上の同期状態バー */
+function renderSyncBar(){
+  const b=$("#syncBar");
+  if(!b) return;
+  if(syncCfg){
+    b.className="syncbar on";
+    const tail=syncCfg.pending?"・未同期あり":(syncCfg.lastSyncAt?"・最終同期 "+fmtDT(syncCfg.lastSyncAt):"");
+    b.innerHTML=`<span class="dot"></span>クラウド保存オン（${esc(syncCfg.deviceName||"")}）${tail}　—　タップで設定`;
+  }else{
+    b.className="syncbar off";
+    b.innerHTML=`<span class="dot"></span>この端末だけに保存中　—　タップでスマホ同期・クラウド保存を設定`;
+  }
+}
+
+/* ===== モーダル開閉 ===== */
+function openModal(id){ $("#"+id).classList.add("open"); $("#"+id+" .modal-box").scrollTop=0; }
+function closeModal(id){ $("#"+id).classList.remove("open"); }
+
+/* ===== 起動 ===== */
+initSelects();
+document.getElementById('fDate').value=todayStr();
+['fDate','fCountry','fPref'].forEach(id=>document.getElementById(id).addEventListener('change',updatePreview));
+document.getElementById('issueBtn').addEventListener('click',issue);
+document.getElementById('search').addEventListener('input',render);
+document.getElementById('exportBtn').addEventListener('click',exportData);
+document.getElementById('importBtn').addEventListener('click',()=>document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change',e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value='';});
+document.getElementById('syncBtn').addEventListener('click',()=>{ renderSyncPane(); openModal('syncOverlay'); });
+document.getElementById('syncBar').addEventListener('click',()=>{ renderSyncPane(); openModal('syncOverlay'); });
+document.getElementById('syncClose').addEventListener('click',()=>closeModal('syncOverlay'));
+document.getElementById('syncOverlay').addEventListener('click',e=>{ if(e.target.id==='syncOverlay') closeModal('syncOverlay'); });
+document.getElementById('menuBtn').addEventListener('click',()=>openModal('menuOverlay'));
+document.getElementById('menuClose').addEventListener('click',()=>closeModal('menuOverlay'));
+document.getElementById('menuOverlay').addEventListener('click',e=>{ if(e.target.id==='menuOverlay') closeModal('menuOverlay'); });
+document.getElementById('bulkOpenBtn').addEventListener('click',()=>{ document.getElementById('bulkResult').innerHTML=''; document.getElementById('bulkAddBtn').hidden=true; bulkParsed=null; closeModal('menuOverlay'); openModal('bulkOverlay'); });
+document.getElementById('bulkClose').addEventListener('click',()=>closeModal('bulkOverlay'));
+document.getElementById('bulkOverlay').addEventListener('click',e=>{ if(e.target.id==='bulkOverlay') closeModal('bulkOverlay'); });
+document.getElementById('bulkParseBtn').addEventListener('click',bulkPreview);
+document.getElementById('bulkAddBtn').addEventListener('click',bulkCommit);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeModal('syncOverlay'); closeModal('menuOverlay'); closeModal('bulkOverlay'); } });
+document.addEventListener('visibilitychange',()=>{ if(appReady&&document.visibilityState==='visible') syncCheckRemote().catch(()=>{}); });
+
+updatePreview();
+render();
+renderSyncBar();
+
+async function initSyncFlow(){
+  if(!syncCfg) return;
+  try{ if(syncCfg.pending) await syncUploadSafe(); await syncCheckRemote(true); }
+  catch(e){ console.warn("initial sync failed",e); }
+}
+appReady=true;
+initSyncFlow();
+</script>
+</body>
+</html>
