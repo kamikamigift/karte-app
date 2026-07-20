@@ -178,7 +178,9 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
 .item-edit-row.dragging{opacity:.45}
 .item-drag{flex-shrink:0;width:30px;height:48px;display:flex;align-items:center;justify-content:center;color:#BFC3C9;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
 .item-drag:active{cursor:grabbing}
-.item-edit-label{flex:1;min-width:0}
+.item-edit-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.item-edit-note{height:44px;font-size:14px}
+.item-edit-note::placeholder{color:var(--text3)}
 .item-kitte{display:flex;align-items:center;gap:5px;flex-shrink:0;font-size:14px;font-weight:600;color:var(--text2);cursor:pointer;user-select:none;white-space:nowrap}
 .item-kitte input{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;margin:0}
 .item-del-btn{width:48px;height:48px;flex-shrink:0;border:none;border-radius:12px;background:var(--surface2);color:#FF3B30;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
@@ -277,7 +279,8 @@ input[type=date].form-input,input[type=time].form-input{-webkit-appearance:none;
         <div class="form-field">
           <label class="form-label">住所</label>
           <input type="text" class="form-input" id="f_zip" placeholder="〒 000-0000" style="margin-bottom:10px">
-          <input type="text" class="form-input" id="f_address" placeholder="住所">
+          <input type="text" class="form-input" id="f_address" placeholder="住所" style="margin-bottom:10px">
+          <input type="text" class="form-input" id="f_building" placeholder="マンション・建物名">
         </div>
         <div class="form-field">
           <label class="form-label">TEL</label>
@@ -457,7 +460,7 @@ const $ = s => document.querySelector(s);
 /* 郵送物の項目・初期値（紙の管理表そのまま）。ユーザーが編集できる */
 const DEFAULT_SEND_ITEMS = [
   {id:"aisatsu",  label:"ご挨拶ハガキ", note:"手紙・文章"},
-  {id:"eikyou",   label:"影響一例", input:"eikyouNote", inputPh:"内容"},
+  {id:"eikyou",   label:"影響一例", input:"eikyouNote", inputPh:"資料"},
   {id:"ichiran",  label:"リソリューション一覧用紙"},
   {id:"kiyaku",   label:"リソリューション規約"},
   {id:"meisaiRei",label:"契約明細書（記入例）"},
@@ -471,8 +474,13 @@ const DEFAULT_RET_ITEMS = [
   {id:"yousouFuutou",  label:"郵送封筒", sub:"yousouKitte", subLabel:"切手"},
 ];
 const ITEMS_KEY = "soufu_items_v1";
+function migrateItems(s){
+  // 影響一例など、旧「内容」入力欄は「資料」に統一
+  s.send.concat(s.ret).forEach(it=>{ if(it.inputPh==="内容") it.inputPh="資料"; });
+  return s;
+}
 function loadItems(){
-  try{ const s=JSON.parse(localStorage.getItem(ITEMS_KEY)); if(s && Array.isArray(s.send) && Array.isArray(s.ret)) return s; }catch(e){}
+  try{ const s=JSON.parse(localStorage.getItem(ITEMS_KEY)); if(s && Array.isArray(s.send) && Array.isArray(s.ret)) return migrateItems(s); }catch(e){}
   return { send: DEFAULT_SEND_ITEMS.map(x=>Object.assign({},x)), ret: DEFAULT_RET_ITEMS.map(x=>Object.assign({},x)) };
 }
 function persistItems(){ localStorage.setItem(ITEMS_KEY, JSON.stringify(itemLists)); }
@@ -612,7 +620,7 @@ function openForm(id){
   $("#f_id").value = rec ? rec.id : "";
   if(rec){
     setVal("f_name",rec.name); setVal("f_kana",rec.kana); setVal("f_yoyakuNo",rec.yoyakuNo);
-    setVal("f_zip",rec.zip); setVal("f_address",rec.address); setVal("f_tel",rec.tel);
+    setVal("f_zip",rec.zip); setVal("f_address",rec.address); setVal("f_building",rec.building); setVal("f_tel",rec.tel);
     setVal("f_kinyuubi",rec.kinyuubi); setVal("f_kinyuusha",rec.kinyuusha);
     setVal("f_uketsukebi",rec.uketsukebi); setVal("f_yoyakubi",rec.yoyakubi); setVal("f_yoyakuTime",rec.yoyakuTime);
     setVal("f_housoubi",rec.housoubi); setVal("f_housoubi2",rec.housoubi2);
@@ -657,7 +665,7 @@ $("#recForm").addEventListener("submit", e=>{
   const methodEl = document.querySelector("input[name=method]:checked");
   const data = {
     name:val("f_name"), kana:val("f_kana"), yoyakuNo:val("f_yoyakuNo"),
-    zip:val("f_zip"), address:val("f_address"), tel:val("f_tel"),
+    zip:val("f_zip"), address:val("f_address"), building:val("f_building"), tel:val("f_tel"),
     kinyuubi:val("f_kinyuubi"), kinyuusha:val("f_kinyuusha"),
     uketsukebi:val("f_uketsukebi"), yoyakubi:val("f_yoyakubi"), yoyakuTime:val("f_yoyakuTime"),
     housoubi:val("f_housoubi"), housoubi2:val("f_housoubi2"),
@@ -731,13 +739,16 @@ function subLabelFor(label){
   if(t.includes("レターパック")) return "シール外し";
   return "";
 }
-function itemRowHtml(id, label, hasKitte){
+function itemRowHtml(id, label, hasKitte, inputPh){
   const subLbl = subLabelFor(label);
   return `<div class="item-edit-row" data-id="${esc(id)}">
     <span class="item-drag" title="ドラッグして並び替え" aria-label="並び替え">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>
     </span>
-    <input class="form-input item-edit-label" value="${esc(label)}" placeholder="項目名">
+    <div class="item-edit-main">
+      <input class="form-input item-edit-label" value="${esc(label)}" placeholder="項目名">
+      <input class="form-input item-edit-note" value="${esc(inputPh||"")}" placeholder="内容の入力欄（例：資料）">
+    </div>
     <label class="item-kitte" title="チェック欄を付ける"${subLbl?"":' style="visibility:hidden"'}><input type="checkbox" class="item-kitte-toggle"${hasKitte?" checked":""}><span class="item-kitte-text">${esc(subLbl||"切手")}</span></label>
     <button type="button" class="item-del-btn" title="削除">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0v13a1 1 0 01-1 1H7a1 1 0 01-1-1V7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -745,7 +756,7 @@ function itemRowHtml(id, label, hasKitte){
   </div>`;
 }
 function renderItemRows(containerId, list){
-  $("#"+containerId).innerHTML = list.map(it=>itemRowHtml(it.id, it.label, !!it.sub)).join("");
+  $("#"+containerId).innerHTML = list.map(it=>itemRowHtml(it.id, it.label, !!it.sub, it.inputPh)).join("");
 }
 function openItemsEditor(){
   closeMenu();
@@ -768,6 +779,9 @@ function readItemRows(containerId){
     const item = existing ? Object.assign({}, existing, {label}) : {id, label};
     if(kitte){ item.sub = item.sub || (id + "_sub"); item.subLabel = subLbl; }
     else { delete item.sub; delete item.subLabel; }
+    const notePh = r.querySelector(".item-edit-note").value.trim();
+    if(notePh){ item.input = item.input || (id + "_note"); item.inputPh = notePh; }
+    else { delete item.input; delete item.inputPh; }
     out.push(item);
   });
   return out;
@@ -835,7 +849,7 @@ $("#itemsOverlay").addEventListener("click", e=>{
   const add = e.target.closest(".add-item-btn");
   if(add){
     const cid = add.dataset.list==="send" ? "editSendList" : "editRetList";
-    $("#"+cid).insertAdjacentHTML("beforeend", itemRowHtml("c_"+uid(), ""));
+    $("#"+cid).insertAdjacentHTML("beforeend", itemRowHtml("c_"+uid(), "", false, ""));
     const rows = $("#"+cid).querySelectorAll(".item-edit-label");
     rows[rows.length-1].focus();
   }
